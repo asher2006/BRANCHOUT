@@ -18,11 +18,11 @@ In hackathons, work is often assigned informally in chat or whiteboards. Before 
 
 ## ✨ Features
 
-### 🌟 AI Auto-Breakdown & Task Allocator (NEW)
+### 🌟 AI Auto-Breakdown & Task Allocator (Default)
 - **Zero-Setup for Users**: Users simply type their hackathon idea or problem statement (or choose a 1-click preset).
 - **Intelligent Architecture Decomposition**: Decomposes the idea into a recommended tech stack, structured `SHARED_CONVENTIONS.md`, and **non-overlapping tasks and owned file paths** across teammates.
 - **Merge-Conflict Prevention by Design**: Strictly partitions directory boundaries so teammates' coding agents never clash.
-- **Backend Multi-Provider Support**: Calls Google Gemini (`gemini-1.5-flash`), Groq (`llama-3.3-70b`), or OpenAI via backend environment variables (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`), with a built-in semantic architect engine that works 100% offline out-of-the-box.
+- **xAI Grok & Groq API Integration**: Supports xAI Grok (`grok-2-latest`) via `GROK_API_KEY` or Groq (`llama-3.3-70b-versatile`) via `GROQ_API_KEY` in `backend/.env`, with Google Gemini, OpenAI, and a built-in semantic architect engine that works 100% offline out-of-the-box.
 
 ### 0. Scaffolding & Terminal Design System
 - **Dark, terminal-inspired aesthetic**: Flat surfaces, high-contrast monospace accents, no generic gradients or drop shadows.

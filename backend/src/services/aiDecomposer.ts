@@ -238,13 +238,36 @@ function heuristicDecompose(options: DecomposeOptions): ProjectDecomposition {
   };
 }
 
+function cleanAndParseJson(text: string): any {
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // Strip markdown code block fences if present
+    const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (match && match[1]) {
+      try {
+        return JSON.parse(match[1].trim());
+      } catch {}
+    }
+    // Fallback: extract between first '{' and last '}'
+    const start = trimmed.indexOf('{');
+    const end = trimmed.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1));
+    }
+    throw new Error('Unable to parse JSON from AI response');
+  }
+}
+
 /**
- * Calls an external LLM (Gemini, Groq, OpenAI) if configured via environment variables.
+ * Calls an external LLM (xAI Grok, Groq, Gemini, OpenAI) if configured via environment variables.
  * Otherwise uses the built-in Intelligent Semantic Architecture Engine.
  */
 export async function decomposeProblemStatement(options: DecomposeOptions): Promise<ProjectDecomposition> {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const grokApiKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY;
   const groqApiKey = process.env.GROQ_API_KEY;
+  const geminiApiKey = process.env.GEMINI_API_KEY;
   const openaiApiKey = process.env.OPENAI_API_KEY;
 
   const teamSize = options.teamSize || 3;
@@ -281,7 +304,117 @@ Respond ONLY with valid JSON matching this schema:
   ]
 }`;
 
-  // 1. Try Google Gemini API if key is present
+  // 1. Try xAI Grok API if key is present (or if key starts with xai-)
+  if (grokApiKey) {
+    // If it's a Groq key (starts with gsk_) accidentally passed as GROK_API_KEY
+    if (grokApiKey.startsWith('gsk_')) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${grokApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.2,
+          }),
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          const content = json?.choices?.[0]?.message?.content;
+          if (content) {
+            const parsed = cleanAndParseJson(content);
+            if (parsed.projectName && Array.isArray(parsed.teammates)) {
+              console.log('Successfully generated architecture via Groq (Llama 3.3)');
+              return parsed;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Groq API call failed:', err);
+      }
+    } else {
+      // Standard xAI Grok API
+      try {
+        const response = await fetch('https://api.x.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${grokApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'grok-2-latest',
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
+            ],
+            temperature: 0.2,
+          }),
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          const content = json?.choices?.[0]?.message?.content;
+          if (content) {
+            const parsed = cleanAndParseJson(content);
+            if (parsed.projectName && Array.isArray(parsed.teammates)) {
+              console.log('Successfully generated architecture via xAI Grok');
+              return parsed;
+            }
+          }
+        } else {
+          console.warn('xAI Grok API returned status:', response.status, await response.text());
+        }
+      } catch (err) {
+        console.warn('xAI Grok API call failed:', err);
+      }
+    }
+  }
+
+  // 2. Try Groq API if separate GROQ_API_KEY is present
+  if (groqApiKey) {
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${groqApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const content = json?.choices?.[0]?.message?.content;
+        if (content) {
+          const parsed = cleanAndParseJson(content);
+          if (parsed.projectName && Array.isArray(parsed.teammates)) {
+            console.log('Successfully generated architecture via Groq (Llama 3.3)');
+            return parsed;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Groq API call failed:', err);
+    }
+  }
+
+  // 3. Try Google Gemini API if key is present
   if (geminiApiKey) {
     try {
       const response = await fetch(
@@ -312,55 +445,19 @@ Respond ONLY with valid JSON matching this schema:
         const json = await response.json();
         const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (rawText) {
-          const parsed = JSON.parse(rawText);
+          const parsed = cleanAndParseJson(rawText);
           if (parsed.projectName && Array.isArray(parsed.teammates)) {
-            return parsed;
-          }
-        }
-      } else {
-        console.warn('Gemini API call returned non-OK status:', response.status);
-      }
-    } catch (err) {
-      console.warn('Failed calling Gemini API, falling back to heuristic engine:', err);
-    }
-  }
-
-  // 2. Try Groq API if key is present
-  if (groqApiKey) {
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-        }),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const content = json?.choices?.[0]?.message?.content;
-        if (content) {
-          const parsed = JSON.parse(content);
-          if (parsed.projectName && Array.isArray(parsed.teammates)) {
+            console.log('Successfully generated architecture via Google Gemini');
             return parsed;
           }
         }
       }
     } catch (err) {
-      console.warn('Failed calling Groq API, falling back to heuristic engine:', err);
+      console.warn('Gemini API call failed:', err);
     }
   }
 
-  // 3. Try OpenAI API if key is present
+  // 4. Try OpenAI API if key is present
   if (openaiApiKey) {
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -384,17 +481,19 @@ Respond ONLY with valid JSON matching this schema:
         const json = await response.json();
         const content = json?.choices?.[0]?.message?.content;
         if (content) {
-          const parsed = JSON.parse(content);
+          const parsed = cleanAndParseJson(content);
           if (parsed.projectName && Array.isArray(parsed.teammates)) {
+            console.log('Successfully generated architecture via OpenAI');
             return parsed;
           }
         }
       }
     } catch (err) {
-      console.warn('Failed calling OpenAI API, falling back to heuristic engine:', err);
+      console.warn('OpenAI API call failed:', err);
     }
   }
 
   // Built-in intelligent fallback engine
+  console.log('Using built-in Semantic Architecture Engine');
   return heuristicDecompose(options);
 }
