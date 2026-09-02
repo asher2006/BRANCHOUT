@@ -11,12 +11,12 @@ interface MemberState {
 }
 
 const DEFAULT_MEMBERS: MemberState[] = [
-  { name: 'Alice', github_username: 'alice-dev' },
-  { name: 'Bob', github_username: 'bob-codes' },
-  { name: 'Charlie', github_username: 'charlie-eng' },
-  { name: 'Dana', github_username: 'dana-tech' },
-  { name: 'Evan', github_username: 'evan-builder' },
-  { name: 'Fiona', github_username: 'fiona-hacks' },
+  { name: 'Alice', github_username: 'alice' },
+  { name: 'Bob', github_username: 'bob' },
+  { name: 'Charlie', github_username: 'charlie' },
+  { name: 'Dana', github_username: 'dana' },
+  { name: 'Evan', github_username: 'evan' },
+  { name: 'Fiona', github_username: 'fiona' },
 ]
 
 const INSPIRATION_PRESETS = [
@@ -94,10 +94,17 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
     })
   }
 
-  // Update a single member's name or handle
-  const handleMemberChange = (index: number, field: keyof MemberState, value: string) => {
+  // Update a single member's name
+  const handleMemberNameChange = (index: number, name: string) => {
     setMembers((prev) =>
-      prev.map((m, idx) => (idx === index ? { ...m, [field]: value } : m))
+      prev.map((m, idx) =>
+        idx === index
+          ? {
+              name,
+              github_username: name.toLowerCase().replace(/[^a-z0-9_-]/g, '') || `member-${idx + 1}`,
+            }
+          : m
+      )
     )
   }
 
@@ -300,7 +307,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
           </div>
         </div>
 
-        {/* Member Names & GitHub Handles */}
+        {/* Member Names */}
         <div style={{ marginTop: 'var(--space-sm)' }}>
           <span className="field-label mono">TEAM MEMBERS:</span>
           <div className="members-grid">
@@ -310,32 +317,16 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                   <span className="member-number-badge">MEMBER {idx + 1}</span>
                 </div>
 
-                <div className="field-row two-col" style={{ gap: 'var(--space-xs)' }}>
-                  <div className="field">
-                    <input
-                      type="text"
-                      className="input mono"
-                      style={{ fontSize: '0.8125rem', padding: '6px 8px' }}
-                      placeholder="Name"
-                      value={member.name}
-                      onChange={(e) => handleMemberChange(idx, 'name', e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="field">
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <span className="mono muted" style={{ marginRight: '4px', fontSize: '0.8125rem' }}>@</span>
-                      <input
-                        type="text"
-                        className="input mono"
-                        style={{ fontSize: '0.8125rem', padding: '6px 8px' }}
-                        placeholder="github-handle"
-                        value={member.github_username}
-                        onChange={(e) => handleMemberChange(idx, 'github_username', e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
+                <div className="field">
+                  <input
+                    type="text"
+                    className="input mono"
+                    style={{ fontSize: '0.875rem', padding: '8px 12px' }}
+                    placeholder={`Name (e.g. Alice)`}
+                    value={member.name}
+                    onChange={(e) => handleMemberNameChange(idx, e.target.value)}
+                    required
+                  />
                 </div>
               </div>
             ))}
@@ -452,14 +443,9 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
               {allocatedTeammates.map((mate, i) => (
                 <div key={i} className="divided-card">
                   <div className="divided-card-head">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="divided-name">{mate.name}</span>
-                      <span className="mono muted" style={{ fontSize: '0.8125rem' }}>
-                        @{mate.github_username}
-                      </span>
-                    </div>
+                    <span className="divided-name">{mate.name}</span>
                     <span className="mono muted" style={{ fontSize: '0.75rem' }}>
-                      ↳ <code>{`${mate.task_description.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 18)}-${mate.github_username}`}</code>
+                      ↳ Branch: <code>{`${mate.task_description.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 18)}-${mate.github_username}`}</code>
                     </span>
                   </div>
 
