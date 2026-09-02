@@ -58,12 +58,25 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   const [allocatedTeammates, setAllocatedTeammates] = useState<TeammateInput[]>([])
 
   // GitHub Launch Options
+  const [existingRepoUrl, setExistingRepoUrl] = useState('')
+  const [newRepoName, setNewRepoName] = useState('')
   const [isDemo, setIsDemo] = useState(true)
   const [githubPat, setGithubPat] = useState('')
-  const [isPrivate, setIsPrivate] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleRepoUrlChange = (url: string) => {
+    setExistingRepoUrl(url)
+    const clean = url.trim().replace(/\.git$/, '').replace(/\/+$/, '')
+    const parts = clean.split('/')
+    if (parts.length >= 2) {
+      const extractedName = parts[parts.length - 1]
+      if (extractedName && (!teamName || teamName === 'HackSquad' || teamName === 'my-project')) {
+        setTeamName(extractedName)
+      }
+    }
+  }
 
   // Adjust member list when teamSize changes
   const handleTeamSizeChange = (newSize: number) => {
@@ -123,6 +136,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
 
       const result = data.data
       setProjectName(result.projectName)
+      setNewRepoName(result.projectName)
       setSummary(result.description)
       setTechStack(result.techStack)
       setConventions(result.sharedConventions)
@@ -161,6 +175,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         description: summary.trim(),
         tech_stack: techStack.trim(),
         shared_conventions: conventions.trim(),
+        github_repo_url: existingRepoUrl.trim() || undefined,
         teammates: allocatedTeammates,
       }
 
@@ -179,14 +194,18 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       const project: Project = await res.json()
 
       // 2. Provision repo & cut branches
-      setSubmitProgress('Provisioning repository and cutting teammate branches...')
+      setSubmitProgress(
+        existingRepoUrl.trim()
+          ? 'Connecting to cloud repository, setting up conventions & branches...'
+          : 'Provisioning cloud repository & cutting teammate branches...'
+      )
       const provisionRes = await fetch(`/api/projects/${project.id}/provision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pat: githubPat.trim() || undefined,
-          repoName: projectName || undefined,
-          isPrivate,
+          repoName: !existingRepoUrl.trim() ? (newRepoName.trim() || projectName) : undefined,
+          existingRepoUrl: existingRepoUrl.trim() || undefined,
           isDemo: isDemo || !githubPat.trim(),
         }),
       })
@@ -213,18 +232,37 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         <div className="ai-modal-badge mono">🌿 BRANCHOUT</div>
         <h1 style={{ marginTop: '4px' }}>Simple Team & Project Setup</h1>
         <p className="form-subtitle">
-          Enter your team details and idea. The AI will divide the work into isolated, conflict-free tasks and branches.
+          Paste your GitHub repository, enter your team and idea. The AI divides the work so everyone works on their branch and pushes to <code>main</code>.
         </p>
       </div>
 
       {/* ============================================================ */}
-      {/* STEP 1: TEAM NAME, TEAM SIZE, & MEMBER NAMES                 */}
+      {/* STEP 1: GITHUB REPOSITORY & TEAM SETUP                       */}
       {/* ============================================================ */}
       <section className="form-section" id="step-team-setup">
         <h2 className="section-title">
           <span className="section-icon mono">01</span>
-          Team Setup
+          GitHub Repo & Team Setup
         </h2>
+
+        {/* GitHub Repository Link */}
+        <div className="field" style={{ marginBottom: 'var(--space-md)' }}>
+          <label htmlFor="input-repo-link" className="field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>🔗 GitHub Repository URL</span>
+            <span className="mono muted" style={{ fontSize: '0.75rem' }}>Paste your newly created repo link</span>
+          </label>
+          <input
+            id="input-repo-link"
+            type="url"
+            className="input mono"
+            placeholder="e.g. https://github.com/your-username/your-hackathon-repo"
+            value={existingRepoUrl}
+            onChange={(e) => handleRepoUrlChange(e.target.value)}
+          />
+          <span className="muted" style={{ fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+            Each teammate works on their assigned branch and then pushes / merges back into <code>main</code>.
+          </span>
+        </div>
 
         {/* Team Name & Size Row */}
         <div className="field-row two-col">
@@ -443,10 +481,61 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
               ))}
             </div>
 
-            {/* Launch / GitHub Provisioning */}
+            {/* Launch / GitHub Cloud Provisioning */}
             <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border-subtle)' }}>
-              <div className="field-row two-col" style={{ alignItems: 'center' }}>
+              <div className="clean-callout" style={{ marginBottom: 'var(--space-md)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <span className="mono" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.875rem' }}>
+                      🔗 Target Repository: {existingRepoUrl ? existingRepoUrl : 'Simulated GitHub Workspace'}
+                    </span>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                      <strong>Lifecycle:</strong> Each teammate creates &amp; works on their dedicated branch, then opens a PR to merge into <code>main</code>.
+                    </p>
+                  </div>
+                  <span className="security-tag mono">
+                    Target Branch: main
+                  </span>
+                </div>
+              </div>
+
+              {/* If repo wasn't entered in Step 1, allow entering or creating one here */}
+              {!existingRepoUrl && (
+                <div className="field" style={{ marginBottom: 'var(--space-sm)' }}>
+                  <label htmlFor="existing-repo-url" className="field-label">
+                    GitHub Repository URL
+                  </label>
+                  <input
+                    id="existing-repo-url"
+                    type="text"
+                    className="input mono"
+                    placeholder="https://github.com/your-username/your-hackathon-repo"
+                    value={existingRepoUrl}
+                    onChange={(e) => setExistingRepoUrl(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* PAT & Demo Mode Row */}
+              <div className="field-row two-col" style={{ alignItems: 'flex-start', marginTop: 'var(--space-sm)' }}>
                 <div className="field">
+                  <label htmlFor="github-pat-input" className="field-label">
+                    Optional: GitHub Personal Access Token (PAT)
+                  </label>
+                  <input
+                    id="github-pat-input"
+                    type="password"
+                    className="input mono"
+                    placeholder="Optional: ghp_xxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={githubPat}
+                    onChange={(e) => setGithubPat(e.target.value)}
+                  />
+                  <span className="muted" style={{ fontSize: '0.6875rem', marginTop: '2px', display: 'block' }}>
+                    Enter PAT to auto-cut branches on GitHub; or leave blank to launch with ready-to-use terminal checkout &amp; push commands.
+                  </span>
+                </div>
+
+                <div className="field checkbox-field" style={{ paddingTop: '24px' }}>
                   <label className="checkbox-label demo-toggle" style={{ fontSize: '0.8125rem', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
@@ -454,29 +543,9 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                       onChange={(e) => setIsDemo(e.target.checked)}
                       id="is-demo-checkbox"
                     />
-                    <span>⚡ <strong>Demo Mode</strong> (Instantly simulate GitHub repository & branches)</span>
+                    <span>⚡ <strong>Demo Mode</strong> (Instant simulation)</span>
                   </label>
                 </div>
-
-                {!isDemo && (
-                  <div className="field">
-                    <input
-                      type="password"
-                      className="input mono"
-                      placeholder="Optional: GitHub PAT (ghp_...)"
-                      value={githubPat}
-                      onChange={(e) => setGithubPat(e.target.value)}
-                    />
-                    <label className="checkbox-label" style={{ marginTop: '4px', fontSize: '0.75rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={isPrivate}
-                        onChange={(e) => setIsPrivate(e.target.checked)}
-                      />
-                      <span>Private Repository</span>
-                    </label>
-                  </div>
-                )}
               </div>
             </div>
 

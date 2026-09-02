@@ -63,11 +63,32 @@ export function generateClientMasterPrompt(project: Project, teammate: Teammate,
   }
 
   // Execution & Delivery Instructions
-  sections.push(`\n## 5. Development Workflow`)
-  sections.push(`1. **Verify your branch:** Ensure you are working on branch \`${teammate.branch_name}\`.`)
-  sections.push(`2. **Implement incrementally:** Build the feature in small, well-tested steps.`)
-  sections.push(`3. **Commit often:** Use clear commit messages (e.g. \`feat(auth): implement token verification\`).`)
-  sections.push(`4. **Push & PR:** When your feature is complete and verified locally, push to \`${teammate.branch_name}\` and open a Pull Request into \`main\`.`)
+  sections.push(`\n## 5. Development & Git Workflow`)
+  sections.push(`1. **Clone & Checkout Your Dedicated Branch:**`)
+  if (project.github_repo_url?.trim()) {
+    sections.push(`   \`\`\`bash`)
+    sections.push(`   git clone ${project.github_repo_url.trim().replace(/\.git$/, '')}.git`)
+    sections.push(`   cd ${project.name}`)
+    sections.push(`   git checkout -b ${teammate.branch_name}`)
+    sections.push(`   \`\`\``)
+  } else {
+    sections.push(`   \`\`\`bash\ngit checkout -b ${teammate.branch_name}\n\`\`\``)
+  }
+  sections.push(`2. **Build Within Your Boundaries:** Work strictly inside your assigned paths.`)
+  sections.push(`3. **Push Changes to Your Branch:**`)
+  sections.push(`   \`\`\`bash`)
+  sections.push(`   git add .`)
+  sections.push(`   git commit -m "feat: complete ${teammate.task_description ? teammate.task_description.slice(0, 40).trim() : 'feature'}"`)
+  sections.push(`   git push -u origin ${teammate.branch_name}`)
+  sections.push(`   \`\`\``)
+  sections.push(`4. **Push / Merge into main Branch:**`)
+  if (project.github_repo_url?.trim()) {
+    sections.push(`   - Open Pull Request: ${project.github_repo_url.trim().replace(/\.git$/, '')}/compare/main...${teammate.branch_name}?expand=1`)
+  }
+  sections.push(`   - Or merge directly into \`main\` when ready:`)
+  sections.push(`     \`\`\`bash`)
+  sections.push(`     git checkout main && git pull origin main && git merge ${teammate.branch_name} && git push origin main`)
+  sections.push(`     \`\`\``)
 
   return sections.join('\n')
 }

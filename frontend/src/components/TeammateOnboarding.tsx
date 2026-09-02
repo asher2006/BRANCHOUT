@@ -110,7 +110,11 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
   const otherTeammates = allTeammates.filter(t => t.id !== teammate.id)
   const repoUrl = project.github_repo_url || '#'
   const branchUrl = repoUrl !== '#' ? `${repoUrl}/tree/${teammate.branch_name}` : '#'
-  const gitSetupCmd = `git fetch origin && git checkout ${teammate.branch_name}`
+  const gitCloneCmd = repoUrl !== '#'
+    ? `git clone ${repoUrl.replace(/\.git$/, '')}.git && cd ${project.name} && git checkout -b ${teammate.branch_name}`
+    : `git checkout -b ${teammate.branch_name}`
+  const gitPushCmd = `git add . && git commit -m "feat: complete assigned task" && git push -u origin ${teammate.branch_name}`
+  const gitMergeCmd = `git checkout main && git pull origin main && git merge ${teammate.branch_name} && git push origin main`
 
   return (
     <div className="onboarding-page" id="onboarding-view">
@@ -166,7 +170,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
       <section className="form-section onboarding-card" id="branch-setup-card">
         <h2 className="section-title">
           <span className="section-icon mono">🌿</span>
-          Assigned Git Branch
+          Assigned Git Branch & Cloud Lifecycle
         </h2>
         <div className="branch-card-details">
           <div className="branch-meta-row">
@@ -191,21 +195,62 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
                 rel="noopener noreferrer"
                 className="btn btn-small"
               >
-                View Repository ↗
+                View Repository on GitHub ↗
               </a>
             )}
           </div>
 
           <div className="git-cmd-box">
-            <span className="field-label">Checkout in your local IDE terminal:</span>
+            <span className="field-label">Step 1: Clone repo &amp; checkout your branch:</span>
             <div className="copy-cmd-row" style={{ marginTop: '4px' }}>
-              <code className="cmd-box mono">{gitSetupCmd}</code>
+              <code className="cmd-box mono">{gitCloneCmd}</code>
               <button
                 type="button"
                 className="btn btn-small btn-primary"
-                onClick={() => handleCopyCommand(gitSetupCmd)}
+                onClick={() => handleCopyCommand(gitCloneCmd)}
               >
                 {copiedCmd ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          <div className="git-cmd-box" style={{ marginTop: 'var(--space-sm)' }}>
+            <span className="field-label">Step 2: Work on your files &amp; push to your branch:</span>
+            <div className="copy-cmd-row" style={{ marginTop: '4px' }}>
+              <code className="cmd-box mono">{gitPushCmd}</code>
+              <button
+                type="button"
+                className="btn btn-small"
+                onClick={() => handleCopyCommand(gitPushCmd)}
+              >
+                Copy Push Command
+              </button>
+            </div>
+          </div>
+
+          <div className="git-cmd-box" style={{ marginTop: 'var(--space-sm)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <span className="field-label">Step 3: Push &amp; Merge into main branch:</span>
+              {repoUrl !== '#' && (
+                <a
+                  href={`${repoUrl.replace(/\.git$/, '')}/compare/main...${teammate.branch_name}?expand=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-small btn-primary"
+                  style={{ textDecoration: 'none' }}
+                >
+                  🚀 Open Pull Request into main ↗
+                </a>
+              )}
+            </div>
+            <div className="copy-cmd-row" style={{ marginTop: '6px' }}>
+              <code className="cmd-box mono">{gitMergeCmd}</code>
+              <button
+                type="button"
+                className="btn btn-small"
+                onClick={() => handleCopyCommand(gitMergeCmd)}
+              >
+                Copy Local Merge
               </button>
             </div>
           </div>

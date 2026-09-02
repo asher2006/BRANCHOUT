@@ -20,10 +20,11 @@ router.post("/", (req, res) => {
   const db = getDb();
 
   try {
+    const repoUrl = (req.body.github_repo_url || "").trim();
     // Insert project
     db.run(
-      `INSERT INTO projects (name, description, tech_stack, shared_conventions) VALUES (?, ?, ?, ?)`,
-      [name.trim(), description || "", tech_stack || "", shared_conventions || ""]
+      `INSERT INTO projects (name, description, tech_stack, shared_conventions, github_repo_url) VALUES (?, ?, ?, ?, ?)`,
+      [name.trim(), description || "", tech_stack || "", shared_conventions || "", repoUrl || null]
     );
 
     // Get the inserted project ID
@@ -157,7 +158,7 @@ router.get("/:id", (req, res) => {
 // POST /api/projects/:id/provision — Provision real GitHub repo, commit conventions & cut branches
 router.post("/:id/provision", async (req, res) => {
   const { id } = req.params;
-  const { pat, repoName, isPrivate, isDemo } = req.body;
+  const { pat, repoName, isPrivate, isDemo, existingRepoUrl } = req.body;
   const db = getDb();
 
   try {
@@ -192,6 +193,7 @@ router.post("/:id/provision", async (req, res) => {
       techStack: project.tech_stack,
       sharedConventions: project.shared_conventions,
       repoName: repoName ? repoName.trim() : undefined,
+      existingRepoUrl: (existingRepoUrl || project.github_repo_url || "").trim() || undefined,
       isPrivate: !!isPrivate,
       isDemo: !!isDemo,
       teammates: teammates.map((tm: any) => ({

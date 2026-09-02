@@ -1984,6 +1984,37 @@ a:hover {
   gap: var(--space-xs);
 }
 
+.git-mode-selector {
+  display: flex;
+  gap: var(--space-xs);
+  background: var(--bg-surface-raised);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  margin-bottom: var(--space-md);
+}
+
+.git-mode-btn {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.git-mode-btn.active {
+  background: var(--bg-root);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 640px) {
   .field-row.two-col {

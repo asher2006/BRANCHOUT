@@ -176,6 +176,19 @@ export default function ProjectCreated({
                         </button>
                       )}
 
+                      {repoUrl && (
+                        <a
+                          href={`${repoUrl.replace(/\.git$/, '')}/compare/main...${mate.branch_name}?expand=1`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-small"
+                          style={{ color: 'var(--accent)', borderColor: 'rgba(92, 225, 230, 0.4)' }}
+                          title="Open Pull Request to merge this branch into main"
+                        >
+                          🚀 Open PR to main ↗
+                        </a>
+                      )}
+
                       <button
                         type="button"
                         className="btn btn-small"

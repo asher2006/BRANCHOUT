@@ -12,6 +12,7 @@ export interface ProjectInput {
   description: string;
   tech_stack: string;
   shared_conventions: string;
+  github_repo_url?: string;
   teammates: TeammateInput[];
 }
 

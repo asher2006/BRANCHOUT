@@ -47,6 +47,19 @@ export async function validateGitHubToken(token: string): Promise<{ valid: boole
   }
 }
 
+export function parseRepoUrl(url: string): { owner: string; repo: string } | null {
+  const clean = url.trim().replace(/\.git$/, '').replace(/\/+$/, '');
+  const match = clean.match(/(?:github\.com[/:])([^/]+)\/([^/]+)$/);
+  if (match) {
+    return { owner: match[1], repo: match[2] };
+  }
+  const parts = clean.split('/');
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    return { owner: parts[0], repo: parts[1] };
+  }
+  return null;
+}
+
 export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<ProvisionResult> {
   const logs: string[] = [];
   const log = (msg: string) => {
@@ -57,14 +70,24 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
   // If in demo mode or no PAT provided, perform simulated provisioning
   if (params.isDemo || !params.pat) {
     log("Running in DEMO / SIMULATED mode");
-    const demoOwner = "demo-lead";
-    const cleanRepoName = (params.repoName || params.projectName)
+    let demoOwner = "demo-lead";
+    let cleanRepoName = (params.repoName || params.projectName)
       .toLowerCase()
       .replace(/[^a-z0-9-_]/g, "-")
       .replace(/^-|-$/g, "") || "hackathon-repo";
+
+    if (params.existingRepoUrl) {
+      const parsed = parseRepoUrl(params.existingRepoUrl);
+      if (parsed) {
+        demoOwner = parsed.owner;
+        cleanRepoName = parsed.repo;
+        log(`Connected simulated environment to target repo: ${demoOwner}/${cleanRepoName}`);
+      }
+    }
+
     const repoUrl = `https://github.com/${demoOwner}/${cleanRepoName}`;
 
-    log(`Simulated repository created: ${repoUrl}`);
+    log(`Cloud repository target: ${repoUrl}`);
     log(`Simulated commit: SHARED_CONVENTIONS.md committed to branch 'main'`);
     log(`Simulated commit: README.md committed to branch 'main'`);
 
@@ -96,94 +119,114 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
   let owner = "";
   let repo = "";
   let repoUrl = "";
+  let defaultBranch = "main";
   const filesCommitted: string[] = [];
   const branches: ProvisionResult["branches"] = [];
 
   try {
     // 1. Get authenticated user
     const { data: user } = await octokit.users.getAuthenticated();
-    owner = user.login;
-    log(`Authenticated as GitHub user: @${owner}`);
+    log(`Authenticated with GitHub as @${user.login}`);
 
-    // 2. Determine repo target
-    const targetRepoName = (params.repoName || params.projectName)
-      .toLowerCase()
-      .replace(/[^a-z0-9-_]/g, "-")
-      .replace(/^-|-$/g, "") || "hackathon-repo";
+    // 2. Connect to existing repo OR create a new repo
+    if (params.existingRepoUrl && params.existingRepoUrl.trim()) {
+      const parsed = parseRepoUrl(params.existingRepoUrl);
+      if (!parsed) {
+        throw new Error(`Invalid GitHub repository URL: "${params.existingRepoUrl}". Use https://github.com/owner/repo or owner/repo format.`);
+      }
+      owner = parsed.owner;
+      repo = parsed.repo;
+      log(`Connecting to existing cloud repository: ${owner}/${repo}`);
 
-    repo = targetRepoName;
-
-    // Check if repo already exists or create new
-    try {
       const existing = await octokit.repos.get({ owner, repo });
       repoUrl = existing.data.html_url;
-      log(`Found existing repository at ${repoUrl}`);
-    } catch (e: any) {
-      if (e.status === 404) {
-        log(`Creating new ${params.isPrivate ? 'private' : 'public'} repository: ${owner}/${repo}`);
-        const created = await octokit.repos.createForAuthenticatedUser({
-          name: repo,
-          description: params.description || `Hackathon project: ${params.projectName}`,
-          private: !!params.isPrivate,
-          auto_init: true, // Creates initial commit on main
-        });
-        repoUrl = created.data.html_url;
-        log(`Created repository: ${repoUrl}`);
-        // Small delay to allow GitHub to initialize main branch
-        await new Promise((r) => setTimeout(r, 1500));
-      } else {
-        throw e;
+      defaultBranch = existing.data.default_branch || "main";
+      log(`Connected successfully to cloud repo: ${repoUrl} (default branch: ${defaultBranch})`);
+    } else {
+      owner = user.login;
+      const targetRepoName = (params.repoName || params.projectName)
+        .toLowerCase()
+        .replace(/[^a-z0-9-_]/g, "-")
+        .replace(/^-|-$/g, "") || "hackathon-repo";
+
+      repo = targetRepoName;
+
+      // Check if repo already exists or create new
+      try {
+        const existing = await octokit.repos.get({ owner, repo });
+        repoUrl = existing.data.html_url;
+        defaultBranch = existing.data.default_branch || "main";
+        log(`Found existing repository at ${repoUrl}`);
+      } catch (e: any) {
+        if (e.status === 404) {
+          log(`Creating new ${params.isPrivate ? 'private' : 'public'} cloud repository: ${owner}/${repo}`);
+          const created = await octokit.repos.createForAuthenticatedUser({
+            name: repo,
+            description: params.description || `Hackathon project: ${params.projectName}`,
+            private: !!params.isPrivate,
+            auto_init: true, // Creates initial commit on main
+          });
+          repoUrl = created.data.html_url;
+          defaultBranch = created.data.default_branch || "main";
+          log(`Created cloud repository: ${repoUrl}`);
+          // Small delay to allow GitHub to initialize default branch
+          await new Promise((r) => setTimeout(r, 1500));
+        } else {
+          throw e;
+        }
       }
     }
 
-    // 3. Commit SHARED_CONVENTIONS.md to main
+    // 3. Commit SHARED_CONVENTIONS.md to default branch
     const conventionsContent = generateSharedConventionsDoc(params);
-    log("Committing SHARED_CONVENTIONS.md to main branch...");
+    log(`Committing SHARED_CONVENTIONS.md to branch '${defaultBranch}'...`);
     await commitFile(octokit, {
       owner,
       repo,
       path: "SHARED_CONVENTIONS.md",
       content: conventionsContent,
       message: "chore: add SHARED_CONVENTIONS.md for hackathon team",
+      branch: defaultBranch,
     });
     filesCommitted.push("SHARED_CONVENTIONS.md");
-    log("Successfully committed SHARED_CONVENTIONS.md");
+    log("Successfully committed SHARED_CONVENTIONS.md to cloud");
 
-    // 4. Commit or update README.md on main
+    // 4. Commit or update README.md on default branch
     const readmeContent = generateReadmeDoc(params);
-    log("Updating README.md with project overview and teammate branch directory...");
+    log(`Updating README.md with project overview and teammate branch directory on '${defaultBranch}'...`);
     await commitFile(octokit, {
       owner,
       repo,
       path: "README.md",
       content: readmeContent,
-      message: "docs: initialize project README with team branch guide",
+      message: "docs: update README with team branch guide",
+      branch: defaultBranch,
     });
     filesCommitted.push("README.md");
-    log("Successfully committed README.md");
+    log("Successfully committed README.md to cloud");
 
-    // 5. Get main branch SHA
-    log("Resolving main branch reference commit SHA...");
+    // 5. Get default branch SHA
+    log(`Resolving '${defaultBranch}' branch reference commit SHA...`);
     const refData = await octokit.git.getRef({
       owner,
       repo,
-      ref: "heads/main",
+      ref: `heads/${defaultBranch}`,
     });
-    const mainSha = refData.data.object.sha;
-    log(`Main branch SHA: ${mainSha.slice(0, 7)}`);
+    const baseSha = refData.data.object.sha;
+    log(`Base branch SHA: ${baseSha.slice(0, 7)}`);
 
-    // 6. Cut branches for teammates
+    // 6. Cut branches for teammates off default branch
     for (const tm of params.teammates) {
       const branchRef = `heads/${tm.branch_name}`;
       try {
-        log(`Cutting branch '${tm.branch_name}' for ${tm.name} (@${tm.github_username})...`);
+        log(`Cutting cloud branch '${tm.branch_name}' for ${tm.name} (@${tm.github_username})...`);
         await octokit.git.createRef({
           owner,
           repo,
           ref: `refs/${branchRef}`,
-          sha: mainSha,
+          sha: baseSha,
         });
-        log(`Created branch: ${tm.branch_name}`);
+        log(`Created cloud branch: ${tm.branch_name}`);
         branches.push({
           name: tm.name,
           branchName: tm.branch_name,
@@ -192,7 +235,7 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
         });
       } catch (branchErr: any) {
         if (branchErr.status === 422) {
-          log(`Branch '${tm.branch_name}' already exists.`);
+          log(`Cloud branch '${tm.branch_name}' already exists.`);
           branches.push({
             name: tm.name,
             branchName: tm.branch_name,
@@ -218,27 +261,29 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
       repoUrl,
       owner,
       repoName: repo,
-      defaultBranch: "main",
+      defaultBranch,
       branches,
       filesCommitted,
       logs,
     };
   } catch (err: any) {
     log(`Provisioning failed with error: ${err.message}`);
-    throw new Error(`GitHub Provisioning Error: ${err.message}`);
+    throw new Error(`GitHub Cloud Error: ${err.message}`);
   }
 }
 
 async function commitFile(
   octokit: Octokit,
-  opts: { owner: string; repo: string; path: string; content: string; message: string }
+  opts: { owner: string; repo: string; path: string; content: string; message: string; branch?: string }
 ) {
+  const branch = opts.branch || "main";
   let sha: string | undefined;
   try {
     const existing = await octokit.repos.getContent({
       owner: opts.owner,
       repo: opts.repo,
       path: opts.path,
+      ref: branch,
     });
     if (!Array.isArray(existing.data) && "sha" in existing.data) {
       sha = existing.data.sha;
@@ -254,7 +299,7 @@ async function commitFile(
     message: opts.message,
     content: Buffer.from(opts.content, "utf-8").toString("base64"),
     sha,
-    branch: "main",
+    branch,
   });
 }
 
