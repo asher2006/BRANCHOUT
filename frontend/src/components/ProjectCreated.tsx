@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import type { Project, ProvisionResult } from '../types'
+import type { Project, ProvisionResult, Teammate } from '../types'
+import { generateClientMasterPrompt } from '../utils/promptTemplate'
 
 interface ProjectCreatedProps {
   project: Project
   provisionResult?: ProvisionResult | null
   onCreateAnother: () => void
+  onSelectTeammate?: (teammateId: number) => void
 }
 
-export default function ProjectCreated({ project, provisionResult, onCreateAnother }: ProjectCreatedProps) {
+export default function ProjectCreated({ project, provisionResult, onCreateAnother, onSelectTeammate }: ProjectCreatedProps) {
   const [showLogs, setShowLogs] = useState(false)
   const [copiedText, setCopiedText] = useState<string | null>(null)
 
@@ -17,6 +19,11 @@ export default function ProjectCreated({ project, provisionResult, onCreateAnoth
     navigator.clipboard.writeText(text)
     setCopiedText(label)
     setTimeout(() => setCopiedText(null), 2000)
+  }
+
+  const handleCopyPrompt = (mate: Teammate) => {
+    const prompt = generateClientMasterPrompt(project, mate, project.teammates)
+    handleCopy(prompt, `prompt-${mate.id}`)
   }
 
   return (
@@ -71,12 +78,17 @@ export default function ProjectCreated({ project, provisionResult, onCreateAnoth
 
       {/* ---- Teammates & Cut Branches ---- */}
       <section className="created-section" id="branches-section">
-        <h2 className="section-title">
-          <span className="section-icon mono">🌿</span>
-          Teammate Branches ({project.teammates.length})
-        </h2>
+        <div className="branches-section-header">
+          <h2 className="section-title" style={{ border: 'none', padding: 0 }}>
+            <span className="section-icon mono">🌿</span>
+            Teammate Onboarding & Master Prompts ({project.teammates.length})
+          </h2>
+          <span className="section-description">
+            Share each teammate's link so they can paste their master prompt into Cursor/Claude Code.
+          </span>
+        </div>
 
-        <div className="branches-list">
+        <div className="branches-list" style={{ marginTop: '16px' }}>
           {project.teammates.map((mate) => {
             const branchUrl = repoUrl ? `${repoUrl}/tree/${mate.branch_name}` : '#'
             const cloneCmd = `git checkout -b ${mate.branch_name}`
@@ -95,7 +107,9 @@ export default function ProjectCreated({ project, provisionResult, onCreateAnoth
                       {mate.branch_name} ↗
                     </a>
                   </div>
-                  <span className="status-badge status-not-started">{mate.status.replace('_', ' ')}</span>
+                  <div className="card-header-actions">
+                    <span className="status-badge status-not-started">{mate.status.replace('_', ' ')}</span>
+                  </div>
                 </div>
 
                 <div className="branch-card-body">
@@ -133,15 +147,35 @@ export default function ProjectCreated({ project, provisionResult, onCreateAnoth
                   )}
 
                   <div className="branch-detail branch-actions-row">
-                    <span className="detail-label">Checkout</span>
-                    <div className="copy-cmd-row">
-                      <code className="cmd-box mono">{cloneCmd}</code>
+                    <span className="detail-label">Quick Actions</span>
+                    <div className="teammate-action-buttons">
+                      <button
+                        type="button"
+                        className="btn btn-small btn-primary"
+                        onClick={() => handleCopyPrompt(mate)}
+                        id={`copy-prompt-${mate.id}`}
+                      >
+                        {copiedText === `prompt-${mate.id}` ? '✓ Copied Prompt!' : '📋 Copy Master Prompt'}
+                      </button>
+
+                      {onSelectTeammate && (
+                        <button
+                          type="button"
+                          className="btn btn-small btn-secondary"
+                          onClick={() => onSelectTeammate(mate.id)}
+                          id={`view-onboarding-${mate.id}`}
+                        >
+                          👤 View Onboarding Page →
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         className="btn btn-small"
                         onClick={() => handleCopy(cloneCmd, `cmd-${mate.id}`)}
+                        title="Copy git checkout command"
                       >
-                        {copiedText === `cmd-${mate.id}` ? '✓ Copied' : 'Copy'}
+                        {copiedText === `cmd-${mate.id}` ? '✓ Copied Git Cmd' : '🌿 Copy Git Cmd'}
                       </button>
                     </div>
                   </div>
@@ -177,12 +211,6 @@ export default function ProjectCreated({ project, provisionResult, onCreateAnoth
           )}
         </section>
       )}
-
-      <div className="created-hint">
-        <p className="muted">
-          Next Phase: Generate personalized AI master prompts and shareable onboarding links for each teammate.
-        </p>
-      </div>
 
       <div className="form-actions">
         <button

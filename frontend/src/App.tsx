@@ -2,16 +2,35 @@ import { useEffect, useState } from 'react'
 import type { Project } from './types'
 import ProjectForm from './components/ProjectForm'
 import ProjectCreated from './components/ProjectCreated'
+import TeammateOnboarding from './components/TeammateOnboarding'
 import './index.css'
 
 type HealthStatus = 'checking' | 'online' | 'offline'
-type View = 'landing' | 'form' | 'created'
+type View = 'landing' | 'form' | 'created' | 'onboarding'
 
 function App() {
   const [health, setHealth] = useState<HealthStatus>('checking')
   const [view, setView] = useState<View>('landing')
   const [createdProject, setCreatedProject] = useState<Project | null>(null)
   const [provisionResult, setProvisionResult] = useState<any>(null)
+  const [selectedTeammateId, setSelectedTeammateId] = useState<number | null>(null)
+
+  // Parse initial hash route or handle hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      const matchTeammate = hash.match(/#\/?teammate\/(\d+)/)
+      if (matchTeammate) {
+        const id = parseInt(matchTeammate[1], 10)
+        setSelectedTeammateId(id)
+        setView('onboarding')
+      }
+    }
+
+    handleHashChange()
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -42,12 +61,30 @@ function App() {
     setCreatedProject(project)
     setProvisionResult(result || null)
     setView('created')
+    window.location.hash = ''
   }
 
   const handleCreateAnother = () => {
     setCreatedProject(null)
     setProvisionResult(null)
+    setSelectedTeammateId(null)
     setView('form')
+    window.location.hash = ''
+  }
+
+  const handleSelectTeammate = (teammateId: number) => {
+    setSelectedTeammateId(teammateId)
+    setView('onboarding')
+    window.location.hash = `#/teammate/${teammateId}`
+  }
+
+  const handleBackFromOnboarding = () => {
+    window.location.hash = ''
+    if (createdProject) {
+      setView('created')
+    } else {
+      setView('landing')
+    }
   }
 
   return (
@@ -55,7 +92,10 @@ function App() {
       <nav className="nav" id="main-nav">
         <div
           className="nav-brand"
-          onClick={() => setView('landing')}
+          onClick={() => {
+            window.location.hash = ''
+            setView('landing')
+          }}
           style={{ cursor: 'pointer' }}
           role="button"
           tabIndex={0}
@@ -88,7 +128,7 @@ function App() {
             >
               Create a project
             </button>
-            <div className="version">v0.1.0 · phase 1</div>
+            <div className="version">v0.1.0 · phase 3</div>
           </div>
         )}
 
@@ -101,6 +141,14 @@ function App() {
             project={createdProject}
             provisionResult={provisionResult}
             onCreateAnother={handleCreateAnother}
+            onSelectTeammate={handleSelectTeammate}
+          />
+        )}
+
+        {view === 'onboarding' && selectedTeammateId && (
+          <TeammateOnboarding
+            teammateId={selectedTeammateId}
+            onBack={handleBackFromOnboarding}
           />
         )}
       </main>
