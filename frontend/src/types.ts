@@ -33,6 +33,24 @@ export interface Project {
   teammates: Teammate[];
 }
 
+export interface ProvisionResult {
+  success: boolean;
+  isDemo: boolean;
+  repoUrl: string;
+  owner: string;
+  repoName: string;
+  defaultBranch: string;
+  branches: Array<{
+    name: string;
+    branchName: string;
+    url: string;
+    status: 'created' | 'failed' | 'exists';
+    error?: string;
+  }>;
+  filesCommitted: string[];
+  logs: string[];
+}
+
 // ---- Validation types ----
 
 export interface OwnershipConflict {
@@ -44,3 +62,4 @@ export interface BalanceWarning {
   message: string;
   details: string;
 }
+

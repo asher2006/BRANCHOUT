@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { initializeDatabase } from "./db.js";
 import projectRoutes from "./routes/projects.js";
+import githubRoutes from "./routes/github.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/projects", projectRoutes);
+app.use("/api/github", githubRoutes);
 
 // In production, serve the frontend build
 const FRONTEND_DIST = path.join(__dirname, "..", "..", "frontend", "dist");

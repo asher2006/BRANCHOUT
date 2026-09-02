@@ -154,6 +154,74 @@ router.get("/:id", (req, res) => {
   }
 });
 
+// POST /api/projects/:id/provision — Provision real GitHub repo, commit conventions & cut branches
+router.post("/:id/provision", async (req, res) => {
+  const { id } = req.params;
+  const { pat, repoName, isPrivate, isDemo } = req.body;
+  const db = getDb();
+
+  try {
+    const projectResult = db.exec(`SELECT * FROM projects WHERE id = ?`, [id]);
+    if (projectResult.length === 0 || projectResult[0].values.length === 0) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    const project = rowToObject(projectResult[0].columns, projectResult[0].values[0]);
+
+    const teammateResult = db.exec(
+      `SELECT * FROM teammates WHERE project_id = ?`,
+      [id]
+    );
+
+    const teammates =
+      teammateResult.length > 0
+        ? teammateResult[0].values.map((row) => {
+            const obj = rowToObject(teammateResult[0].columns, row);
+            obj.owned_paths = JSON.parse((obj.owned_paths as string) || "[]");
+            return obj;
+          })
+        : [];
+
+    const { provisionGitHubRepo } = await import("../services/github.js");
+
+    const result = await provisionGitHubRepo({
+      pat: pat ? pat.trim() : undefined,
+      projectName: project.name,
+      description: project.description,
+      techStack: project.tech_stack,
+      sharedConventions: project.shared_conventions,
+      repoName: repoName ? repoName.trim() : undefined,
+      isPrivate: !!isPrivate,
+      isDemo: !!isDemo,
+      teammates: teammates.map((tm: any) => ({
+        name: tm.name,
+        github_username: tm.github_username,
+        task_description: tm.task_description,
+        branch_name: tm.branch_name,
+        owned_paths: tm.owned_paths,
+      })),
+    });
+
+    // Update project github_repo_url in database
+    db.run(`UPDATE projects SET github_repo_url = ? WHERE id = ?`, [
+      result.repoUrl,
+      id,
+    ]);
+    saveDatabase();
+
+    res.json({
+      ...result,
+      projectId: Number(id),
+    });
+  } catch (err: any) {
+    console.error("Provisioning error:", err);
+    res.status(500).json({
+      error: err.message || "Failed to provision repository",
+    });
+  }
+});
+
 // Helper: convert sql.js row array to object
 function rowToObject(columns: string[], values: any[]): Record<string, any> {
   const obj: Record<string, any> = {};

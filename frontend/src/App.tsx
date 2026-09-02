@@ -11,6 +11,7 @@ function App() {
   const [health, setHealth] = useState<HealthStatus>('checking')
   const [view, setView] = useState<View>('landing')
   const [createdProject, setCreatedProject] = useState<Project | null>(null)
+  const [provisionResult, setProvisionResult] = useState<any>(null)
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -37,13 +38,15 @@ function App() {
     offline: 'api offline',
   }
 
-  const handleProjectCreated = (project: Project) => {
+  const handleProjectCreated = (project: Project, result?: any) => {
     setCreatedProject(project)
+    setProvisionResult(result || null)
     setView('created')
   }
 
   const handleCreateAnother = () => {
     setCreatedProject(null)
+    setProvisionResult(null)
     setView('form')
   }
 
@@ -96,6 +99,7 @@ function App() {
         {view === 'created' && createdProject && (
           <ProjectCreated
             project={createdProject}
+            provisionResult={provisionResult}
             onCreateAnother={handleCreateAnother}
           />
         )}

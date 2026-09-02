@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import type { TeammateInput, ProjectInput, Project, OwnershipConflict, BalanceWarning } from '../types'
+import type { TeammateInput, ProjectInput, Project, OwnershipConflict, BalanceWarning, ProvisionResult } from '../types'
 import { checkOwnershipConflicts, checkWorkloadBalance } from '../utils/validation'
 import TeammateRow from './TeammateRow'
 
@@ -11,7 +11,7 @@ const emptyTeammate = (): TeammateInput => ({
 })
 
 interface ProjectFormProps {
-  onSuccess: (project: Project) => void
+  onSuccess: (project: Project, provisionResult?: ProvisionResult) => void
 }
 
 export default function ProjectForm({ onSuccess }: ProjectFormProps) {
@@ -20,7 +20,18 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   const [techStack, setTechStack] = useState('')
   const [conventions, setConventions] = useState('')
   const [teammates, setTeammates] = useState<TeammateInput[]>([emptyTeammate(), emptyTeammate()])
+  
+  // GitHub provisioning states
+  const [githubPat, setGithubPat] = useState('')
+  const [repoName, setRepoName] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
+  const [tokenTesting, setTokenTesting] = useState(false)
+  const [tokenStatus, setTokenStatus] = useState<{ valid?: boolean; username?: string; error?: string } | null>(null)
+  const [showPat, setShowPat] = useState(false)
+
   const [submitting, setSubmitting] = useState(false)
+  const [provisionProgress, setProvisionProgress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Live validation
@@ -46,6 +57,29 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
     setTeammates(prev => prev.filter((_, i) => i !== index))
   }
 
+  const handleTestToken = async () => {
+    if (!githubPat.trim()) {
+      setTokenStatus({ valid: false, error: 'Please enter a token first' })
+      return
+    }
+
+    setTokenTesting(true)
+    setTokenStatus(null)
+    try {
+      const res = await fetch('/api/github/validate-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: githubPat.trim() }),
+      })
+      const data = await res.json()
+      setTokenStatus(data)
+    } catch (e: any) {
+      setTokenStatus({ valid: false, error: e.message || 'Validation request failed' })
+    } finally {
+      setTokenTesting(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -65,6 +99,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
     }
 
     setSubmitting(true)
+    setProvisionProgress('Saving project brief to database...')
 
     try {
       const payload: ProjectInput = {
@@ -75,6 +110,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         teammates: activeTeammates,
       }
 
+      // 1. Create project in DB
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,11 +123,33 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       }
 
       const project: Project = await res.json()
-      onSuccess(project)
+
+      // 2. Provision GitHub repository
+      setProvisionProgress('Provisioning GitHub repository and cutting branches...')
+      const provisionRes = await fetch(`/api/projects/${project.id}/provision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pat: githubPat.trim() || undefined,
+          repoName: repoName.trim() || undefined,
+          isPrivate,
+          isDemo: isDemo || !githubPat.trim(),
+        }),
+      })
+
+      if (provisionRes.ok) {
+        const provisionResult: ProvisionResult = await provisionRes.json()
+        project.github_repo_url = provisionResult.repoUrl
+        onSuccess(project, provisionResult)
+      } else {
+        // Still proceed to success page even if provisioning had an issue
+        onSuccess(project)
+      }
     } catch (err: any) {
       setError(err.message || 'Something went wrong')
     } finally {
       setSubmitting(false)
+      setProvisionProgress(null)
     }
   }
 
@@ -100,7 +158,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       <div className="form-header">
         <h1>New project brief</h1>
         <p className="form-subtitle">
-          Define your project, set shared conventions, and assign teammates their branches.
+          Define your project, set shared conventions, and auto-provision GitHub branches.
         </p>
       </div>
 
@@ -119,7 +177,12 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
             className="input"
             placeholder="hackathon-tracker"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value)
+              if (!repoName) {
+                setRepoName(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-'))
+              }
+            }}
             required
           />
         </div>
@@ -157,7 +220,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         </h2>
         <p className="section-description">
           Coding standards, naming patterns, and project rules that every teammate should follow.
-          This will be committed as <code>SHARED_CONVENTIONS.md</code> to the repo.
+          This will be committed as <code>SHARED_CONVENTIONS.md</code> on the repository's <code>main</code> branch.
         </p>
 
         <div className="field">
@@ -166,7 +229,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
             id="conventions"
             className="input textarea textarea-tall mono"
             placeholder={"# Conventions\n\n- Use TypeScript strict mode\n- Naming: camelCase for variables, PascalCase for components\n- All API routes start with /api/\n- Commit messages: type(scope): description"}
-            rows={10}
+            rows={8}
             value={conventions}
             onChange={(e) => setConventions(e.target.value)}
           />
@@ -231,10 +294,109 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         </button>
       </section>
 
+      {/* ---- GitHub Provisioning Section ---- */}
+      <section className="form-section" id="github-section">
+        <h2 className="section-title">
+          <span className="section-icon mono">04</span>
+          GitHub Repository Provisioning
+        </h2>
+        <p className="section-description">
+          Branchout will automatically create your GitHub repo, commit <code>SHARED_CONVENTIONS.md</code> to <code>main</code>, and cut one branch per teammate.
+        </p>
+
+        <div className="field">
+          <div className="field-header-row">
+            <label htmlFor="github-pat" className="field-label">GitHub Personal Access Token (PAT)</label>
+            <span className="security-tag mono">🔒 Session only · Never persisted</span>
+          </div>
+          <div className="pat-input-container">
+            <input
+              id="github-pat"
+              type={showPat ? "text" : "password"}
+              className="input mono"
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              value={githubPat}
+              onChange={(e) => {
+                setGithubPat(e.target.value)
+                setTokenStatus(null)
+              }}
+            />
+            <button
+              type="button"
+              className="btn btn-small"
+              onClick={() => setShowPat(!showPat)}
+              title={showPat ? "Hide token" : "Show token"}
+            >
+              {showPat ? "Hide" : "Show"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-small btn-secondary"
+              onClick={handleTestToken}
+              disabled={tokenTesting || !githubPat.trim()}
+              id="test-token-btn"
+            >
+              {tokenTesting ? "Testing..." : "Verify Token"}
+            </button>
+          </div>
+
+          {tokenStatus && (
+            <div className={`token-status-badge ${tokenStatus.valid ? 'token-valid' : 'token-invalid'}`}>
+              {tokenStatus.valid ? (
+                <span>✓ Authenticated with GitHub as <strong>@{tokenStatus.username}</strong></span>
+              ) : (
+                <span>✗ {tokenStatus.error}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="field-row two-col">
+          <div className="field">
+            <label htmlFor="repo-name" className="field-label">Repository name</label>
+            <input
+              id="repo-name"
+              type="text"
+              className="input mono"
+              placeholder="my-hackathon-repo"
+              value={repoName}
+              onChange={(e) => setRepoName(e.target.value)}
+            />
+          </div>
+          <div className="field checkbox-field">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                id="is-private-checkbox"
+              />
+              <span>Create as Private Repository</span>
+            </label>
+            <label className="checkbox-label demo-toggle">
+              <input
+                type="checkbox"
+                checked={isDemo}
+                onChange={(e) => setIsDemo(e.target.checked)}
+                id="is-demo-checkbox"
+              />
+              <span>Demo Mode (Simulate GitHub actions without real PAT)</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
       {/* ---- Submit ---- */}
       {error && (
         <div className="error-banner" id="form-error">
           {error}
+        </div>
+      )}
+
+      {provisionProgress && (
+        <div className="progress-banner" id="provision-progress">
+          <span className="spinner" />
+          <span>{provisionProgress}</span>
         </div>
       )}
 
@@ -245,7 +407,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
           disabled={submitting}
           id="submit-btn"
         >
-          {submitting ? 'Creating...' : 'Create project'}
+          {submitting ? 'Provisioning Repo...' : 'Create & Provision Repo'}
         </button>
         <span className="form-hint">
           {conflicts.length > 0 && '⚠ Conflicts present — you can still submit'}
