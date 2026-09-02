@@ -18,6 +18,9 @@ export interface BranchActivity {
   isStale: boolean;
   hoursSinceLastCommit: number | null;
   snapshotAt: string;
+  boundaryCheckStatus: 'passed' | 'failed' | 'pending' | 'none';
+  boundaryViolationCount: number;
+  violatingFiles?: string[];
 }
 
 export interface ProjectActivityReport {
@@ -29,9 +32,22 @@ export interface ProjectActivityReport {
   activeBranchesCount: number;
   staleBranchesCount: number;
   openPrCount: number;
+  boundaryChecksPassedCount: number;
+  boundaryChecksFailedCount: number;
   isDemo: boolean;
   refreshedAt: string;
   branches: BranchActivity[];
+}
+
+// In-memory store for simulated boundary check violations
+const simulatedViolations = new Map<number, { failed: boolean; violatingFiles: string[] }>();
+
+export function toggleBoundaryViolation(teammateId: number): { failed: boolean; violatingFiles: string[] } {
+  const current = simulatedViolations.get(teammateId);
+  const nextFailed = !current?.failed;
+  const violatingFiles = nextFailed ? ["src/shared/config.ts", "src/auth/secretKey.ts"] : [];
+  simulatedViolations.set(teammateId, { failed: nextFailed, violatingFiles });
+  return { failed: nextFailed, violatingFiles };
 }
 
 /**
@@ -141,6 +157,34 @@ export async function pollProjectActivity(
         staleThresholdHours
       );
 
+      // Check real commit status / checks if available
+      let boundaryCheckStatus: BranchActivity["boundaryCheckStatus"] = commitCount > 0 ? "passed" : "none";
+      let boundaryViolationCount = 0;
+      let violatingFiles: string[] = [];
+
+      try {
+        const checkRuns = await octokit.checks.listForRef({
+          owner,
+          repo,
+          ref: lastCommitSha || tm.branch_name,
+        });
+        const bc = checkRuns.data.check_runs.find(
+          (c) => c.name.toLowerCase().includes("boundary-check") || c.name.toLowerCase().includes("boundary check")
+        );
+        if (bc) {
+          if (bc.conclusion === "success") {
+            boundaryCheckStatus = "passed";
+          } else if (bc.conclusion === "failure") {
+            boundaryCheckStatus = "failed";
+            boundaryViolationCount = 1;
+          } else if (bc.status === "in_progress" || bc.status === "queued") {
+            boundaryCheckStatus = "pending";
+          }
+        }
+      } catch {
+        // checks API fallback
+      }
+
       // Record snapshot in SQLite
       insertSnapshot(db, tm.id, commitCount, lastCommitAt, prStatus, prUrl);
 
@@ -161,6 +205,9 @@ export async function pollProjectActivity(
         isStale,
         hoursSinceLastCommit,
         snapshotAt: now.toISOString(),
+        boundaryCheckStatus,
+        boundaryViolationCount,
+        violatingFiles,
       });
     }
   } else {
@@ -179,6 +226,19 @@ export async function pollProjectActivity(
         staleThresholdHours
       );
 
+      const sim = simulatedViolations.get(tm.id);
+      let boundaryCheckStatus: BranchActivity["boundaryCheckStatus"] = "none";
+      let boundaryViolationCount = 0;
+      let violatingFiles: string[] = [];
+
+      if (sim?.failed) {
+        boundaryCheckStatus = "failed";
+        violatingFiles = sim.violatingFiles || ["src/shared/config.ts", "src/auth/secretKey.ts"];
+        boundaryViolationCount = violatingFiles.length;
+      } else if (commitCount > 0 || tm.status !== "not_started") {
+        boundaryCheckStatus = "passed";
+      }
+
       branches.push({
         teammateId: tm.id,
         teammateName: tm.name,
@@ -196,6 +256,9 @@ export async function pollProjectActivity(
         isStale,
         hoursSinceLastCommit,
         snapshotAt: now.toISOString(),
+        boundaryCheckStatus,
+        boundaryViolationCount,
+        violatingFiles,
       });
     }
   }
@@ -206,6 +269,8 @@ export async function pollProjectActivity(
   const activeBranchesCount = branches.filter((b) => b.commitCount > 0).length;
   const staleBranchesCount = branches.filter((b) => b.isStale).length;
   const openPrCount = branches.filter((b) => b.prStatus === "open").length;
+  const boundaryChecksPassedCount = branches.filter((b) => b.boundaryCheckStatus === "passed").length;
+  const boundaryChecksFailedCount = branches.filter((b) => b.boundaryCheckStatus === "failed").length;
 
   return {
     projectId,
@@ -216,6 +281,8 @@ export async function pollProjectActivity(
     activeBranchesCount,
     staleBranchesCount,
     openPrCount,
+    boundaryChecksPassedCount,
+    boundaryChecksFailedCount,
     isDemo,
     refreshedAt: now.toISOString(),
     branches,
@@ -267,6 +334,9 @@ export function simulateBranchCommit(teammateId: number): BranchActivity {
     isStale: false,
     hoursSinceLastCommit: 0,
     snapshotAt: now,
+    boundaryCheckStatus: "passed",
+    boundaryViolationCount: 0,
+    violatingFiles: [],
   };
 }
 

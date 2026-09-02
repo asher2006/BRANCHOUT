@@ -34,8 +34,10 @@ export default function ContributionDashboard({
 
   // Quick feedback
   const [simulatingTeammateId, setSimulatingTeammateId] = useState<number | null>(null)
+  const [togglingBoundaryId, setTogglingBoundaryId] = useState<number | null>(null)
   const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null)
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const fetchActivity = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true)
@@ -88,6 +90,24 @@ export default function ContributionDashboard({
       console.error('Failed to simulate commit:', e)
     } finally {
       setSimulatingTeammateId(null)
+    }
+  }
+
+  const handleToggleBoundaryViolation = async (teammateId: number) => {
+    setTogglingBoundaryId(teammateId)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/activity/toggle-boundary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teammateId }),
+      })
+      if (res.ok) {
+        await fetchActivity(false)
+      }
+    } catch (e) {
+      console.error('Failed to toggle boundary violation:', e)
+    } finally {
+      setTogglingBoundaryId(null)
     }
   }
 
@@ -207,6 +227,12 @@ export default function ContributionDashboard({
   const mismatchesCount = report.branches.filter(
     (b) => b.status === 'done' && b.commitCount === 0
   ).length
+  const boundaryViolationsCount = report.branches.filter(
+    (b) => b.boundaryCheckStatus === 'failed'
+  ).length
+  const boundaryCleanCount = report.branches.filter(
+    (b) => b.boundaryCheckStatus === 'passed'
+  ).length
 
   return (
     <div className="dashboard-container" id="contribution-dashboard">
@@ -220,10 +246,17 @@ export default function ContributionDashboard({
           )}
           <div>
             <div className="onboarding-breadcrumbs mono">
+              <span className="prompt">&gt;_</span>
               <span>project</span>
               <span className="breadcrumb-sep">/</span>
               <span className="accent-text">{report.projectName}</span>
-              {report.isDemo && <span className="demo-badge mono">✦ Demo Activity</span>}
+              {report.isDemo ? (
+                <span className="demo-badge mono">✦ Demo Activity</span>
+              ) : (
+                <span className="demo-badge mono" style={{ color: 'var(--accent)', borderColor: 'rgba(0, 240, 255, 0.3)' }}>
+                  ● Cloud Monitored
+                </span>
+              )}
             </div>
             <h1>Live Contribution Dashboard</h1>
           </div>
@@ -273,7 +306,7 @@ export default function ContributionDashboard({
         <div className="stat-card">
           <span className="stat-label mono">TOTAL COMMITS</span>
           <div className="stat-value-row">
-            <span className="stat-number mono">{report.totalCommits}</span>
+            <span className="stat-number mono accent-number">{report.totalCommits}</span>
             <span className="stat-subtext">across all branches</span>
           </div>
         </div>
@@ -298,6 +331,18 @@ export default function ContributionDashboard({
           </div>
         </div>
 
+        <div className={`stat-card ${boundaryViolationsCount > 0 ? 'stat-card-warning' : ''}`}>
+          <span className="stat-label mono">CI BOUNDARIES</span>
+          <div className="stat-value-row">
+            <span className={`stat-number mono ${boundaryViolationsCount > 0 ? 'warning-number' : 'accent-number'}`}>
+              {boundaryViolationsCount > 0 ? `⚠️ ${boundaryViolationsCount}` : `🛡️ ${boundaryCleanCount}/${report.branches.length}`}
+            </span>
+            <span className="stat-subtext">
+              {boundaryViolationsCount > 0 ? 'PRs with out-of-bounds files' : 'Zero path violations'}
+            </span>
+          </div>
+        </div>
+
         <div className={`stat-card ${mismatchesCount > 0 ? 'stat-card-warning' : ''}`}>
           <span className="stat-label mono">STATUS MISMATCHES</span>
           <div className="stat-value-row">
@@ -310,6 +355,19 @@ export default function ContributionDashboard({
           </div>
         </div>
       </div>
+
+      {/* ---- Boundary Violation Callout if any PRs violated boundaries ---- */}
+      {boundaryViolationsCount > 0 && (
+        <div className="warning-banner boundary-alert-banner" id="boundary-alert-banner">
+          <span className="warning-icon">🛡️</span>
+          <div style={{ flex: 1 }}>
+            <strong>CI Boundary Check Alert ({boundaryViolationsCount} blocked)</strong>
+            <p>
+              Teammate changes touch files outside their assigned <code>owned_paths</code>. GitHub Actions <code>boundary-check</code> workflow will fail and block merging into <code>main</code> until out-of-bounds files are reverted.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ---- Stale Warning Callout if any branches are stale ---- */}
       {staleBranches.length > 0 && (
@@ -365,6 +423,18 @@ export default function ContributionDashboard({
         </div>
 
         <div className="toolbar-group">
+          <label className="toolbar-label mono">SEARCH:</label>
+          <input
+            type="text"
+            className="input select-input mono"
+            placeholder="Filter teammate/branch..."
+            style={{ width: 170 }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="toolbar-group">
           <label className="toolbar-label mono">GITHUB PAT (OPTIONAL):</label>
           <input
             type="password"
@@ -378,7 +448,7 @@ export default function ContributionDashboard({
         </div>
 
         <div className="toolbar-status-text mono muted">
-          Last polled: {new Date(report.refreshedAt).toLocaleTimeString()}
+          <span className="live-poll-dot" /> Last polled: {new Date(report.refreshedAt).toLocaleTimeString()}
         </div>
       </div>
 
@@ -393,177 +463,238 @@ export default function ContributionDashboard({
               <th>LAST ACTIVITY</th>
               <th>PR STATUS</th>
               <th>SELF REPORT</th>
+              <th>CI BOUNDARY</th>
               <th>HEALTH & ALIGNMENT</th>
               <th>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
-            {report.branches.map((branch: BranchActivity) => {
-              const branchHref = report.githubRepoUrl ? `${report.githubRepoUrl}/tree/${branch.branchName}` : '#'
-              const cloneCmd = `git checkout ${branch.branchName}`
-              const isMismatch = branch.status === 'done' && branch.commitCount === 0
+            {report.branches
+              .filter((branch) => {
+                if (!searchQuery.trim()) return true
+                const q = searchQuery.toLowerCase()
+                return (
+                  branch.teammateName.toLowerCase().includes(q) ||
+                  branch.githubUsername.toLowerCase().includes(q) ||
+                  branch.branchName.toLowerCase().includes(q)
+                )
+              })
+              .map((branch: BranchActivity) => {
+                const branchHref = report.githubRepoUrl ? `${report.githubRepoUrl}/tree/${branch.branchName}` : '#'
+                const cloneCmd = `git checkout ${branch.branchName}`
+                const isMismatch = branch.status === 'done' && branch.commitCount === 0
 
-              return (
-                <tr
-                  key={branch.teammateId}
-                  className={`activity-row ${branch.isStale || isMismatch ? 'row-stale' : ''}`}
-                  id={`row-teammate-${branch.teammateId}`}
-                >
-                  {/* Teammate */}
-                  <td className="cell-teammate">
-                    <div className="tm-name-stack">
-                      <strong>{branch.teammateName}</strong>
+                return (
+                  <tr
+                    key={branch.teammateId}
+                    className={`activity-row ${branch.isStale || isMismatch ? 'row-stale' : ''} ${branch.boundaryCheckStatus === 'failed' ? 'row-boundary-failed' : ''}`}
+                    id={`row-teammate-${branch.teammateId}`}
+                  >
+                    {/* Teammate */}
+                    <td className="cell-teammate">
+                      <div className="tm-avatar-row">
+                        <div className="tm-avatar mono">
+                          {branch.teammateName.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="tm-name-stack">
+                          <strong>{branch.teammateName}</strong>
+                          <a
+                            href={`https://github.com/${branch.githubUsername}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mono muted tm-handle"
+                          >
+                            @{branch.githubUsername}
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Branch */}
+                    <td className="cell-branch">
                       <a
-                        href={`https://github.com/${branch.githubUsername}`}
+                        href={branchHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mono muted tm-handle"
+                        className="mono branch-table-link"
+                        title="Open branch in GitHub"
                       >
-                        @{branch.githubUsername}
+                        <span className="branch-icon">🌿</span> {branch.branchName} ↗
                       </a>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Branch */}
-                  <td className="cell-branch">
-                    <a
-                      href={branchHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mono branch-table-link"
-                      title="Open branch in GitHub"
-                    >
-                      {branch.branchName} ↗
-                    </a>
-                  </td>
-
-                  {/* Commits */}
-                  <td className="cell-commits">
-                    <div className="commits-pill-wrap">
-                      <span className={`commits-count-badge mono ${branch.commitCount > 0 ? 'active-commits' : 'zero-commits'}`}>
-                        {branch.commitCount}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Last Activity */}
-                  <td className="cell-last-commit">
-                    <div className="last-commit-info">
-                      <span className={`last-commit-time ${branch.isStale ? 'text-warning' : ''}`}>
-                        {formatRelativeTime(branch.lastCommitAt)}
-                      </span>
-                      {branch.lastCommitMessage && (
-                        <span className="last-commit-msg mono muted" title={branch.lastCommitMessage}>
-                          {branch.lastCommitMessage.slice(0, 28)}
-                          {branch.lastCommitMessage.length > 28 ? '…' : ''}
+                    {/* Commits */}
+                    <td className="cell-commits">
+                      <div className="commits-pill-wrap">
+                        <span className={`commits-count-badge mono ${branch.commitCount > 0 ? 'active-commits' : 'zero-commits'}`}>
+                          {branch.commitCount}
                         </span>
+                      </div>
+                    </td>
+
+                    {/* Last Activity */}
+                    <td className="cell-last-commit">
+                      <div className="last-commit-info">
+                        <span className={`last-commit-time ${branch.isStale ? 'text-warning' : ''}`}>
+                          {formatRelativeTime(branch.lastCommitAt)}
+                        </span>
+                        {branch.lastCommitMessage && (
+                          <span className="last-commit-msg mono muted" title={branch.lastCommitMessage}>
+                            {branch.lastCommitMessage.slice(0, 28)}
+                            {branch.lastCommitMessage.length > 28 ? '…' : ''}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* PR Status */}
+                    <td className="cell-pr">
+                      {branch.prStatus === 'open' && branch.prUrl && (
+                        <a
+                          href={branch.prUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="pr-badge pr-open mono"
+                        >
+                          PR #{branch.prNumber || '1'} Open ↗
+                        </a>
                       )}
-                    </div>
-                  </td>
+                      {branch.prStatus === 'merged' && (
+                        <span className="pr-badge pr-merged mono">Merged ✓</span>
+                      )}
+                      {branch.prStatus === 'draft' && (
+                        <span className="pr-badge pr-draft mono">Draft PR</span>
+                      )}
+                      {branch.prStatus === 'closed' && (
+                        <span className="pr-badge pr-closed mono">Closed</span>
+                      )}
+                      {branch.prStatus === 'none' && (
+                        <span className="pr-badge pr-none mono">No PR</span>
+                      )}
+                    </td>
 
-                  {/* PR Status */}
-                  <td className="cell-pr">
-                    {branch.prStatus === 'open' && branch.prUrl && (
-                      <a
-                        href={branch.prUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pr-badge pr-open mono"
+                    {/* Self-Reported Status Picker */}
+                    <td className="cell-self-report">
+                      <select
+                        className={`status-select mono status-select-${branch.status}`}
+                        value={branch.status}
+                        onChange={(e) => handleStatusChange(branch.teammateId, e.target.value as any)}
+                        disabled={updatingStatusId === branch.teammateId}
+                        title="Change teammate self-reported status"
                       >
-                        PR #{branch.prNumber || '1'} Open ↗
-                      </a>
-                    )}
-                    {branch.prStatus === 'merged' && (
-                      <span className="pr-badge pr-merged mono">Merged ✓</span>
-                    )}
-                    {branch.prStatus === 'draft' && (
-                      <span className="pr-badge pr-draft mono">Draft PR</span>
-                    )}
-                    {branch.prStatus === 'closed' && (
-                      <span className="pr-badge pr-closed mono">Closed</span>
-                    )}
-                    {branch.prStatus === 'none' && (
-                      <span className="pr-badge pr-none mono">No PR</span>
-                    )}
-                  </td>
+                        <option value="not_started">Not Started</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done ✓</option>
+                      </select>
+                    </td>
 
-                  {/* Self-Reported Status Picker */}
-                  <td className="cell-self-report">
-                    <select
-                      className={`status-select mono status-select-${branch.status}`}
-                      value={branch.status}
-                      onChange={(e) => handleStatusChange(branch.teammateId, e.target.value as any)}
-                      disabled={updatingStatusId === branch.teammateId}
-                      title="Change teammate self-reported status"
-                    >
-                      <option value="not_started">Not Started</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="done">Done ✓</option>
-                    </select>
-                  </td>
-
-                  {/* Health & Alignment */}
-                  <td className="cell-health">
-                    <div className="health-stack">
-                      {isMismatch ? (
-                        <span className="health-badge health-stale mono" title="Teammate reported 'Done' but 0 commits were recorded on this branch!">
-                          ⚠️ Mismatch (0 commits)
+                    {/* CI Boundary Check */}
+                    <td className="cell-boundary">
+                      {branch.boundaryCheckStatus === 'failed' ? (
+                        <div className="boundary-badge-stack">
+                          <span
+                            className="boundary-badge boundary-failed mono"
+                            title={branch.violatingFiles?.length ? `Out-of-bounds files:\n${branch.violatingFiles.join('\n')}` : 'Modified files outside declared owned_paths'}
+                          >
+                            ⚠️ Blocked ({branch.boundaryViolationCount || 1})
+                          </span>
+                          {branch.violatingFiles && branch.violatingFiles.length > 0 && (
+                            <span className="violating-file-hint mono muted" title={branch.violatingFiles.join(', ')}>
+                              {branch.violatingFiles[0]}
+                            </span>
+                          )}
+                        </div>
+                      ) : branch.boundaryCheckStatus === 'passed' ? (
+                        <span className="boundary-badge boundary-passed mono" title="All changed files fall strictly within declared owned_paths">
+                          🛡️ Passed
                         </span>
-                      ) : branch.isStale ? (
-                        <span className="health-badge health-stale mono" title={`Inactive for ${branch.hoursSinceLastCommit || staleThreshold}+ hours`}>
-                          ⚠ Stale Nudge
-                        </span>
-                      ) : branch.status === 'done' ? (
-                        <span className="health-badge health-active mono">
-                          🎉 Completed
-                        </span>
-                      ) : branch.commitCount > 0 ? (
-                        <span className="health-badge health-active mono">
-                          🟢 Active
+                      ) : branch.boundaryCheckStatus === 'pending' ? (
+                        <span className="boundary-badge boundary-pending mono">
+                          ⏳ Checking...
                         </span>
                       ) : (
-                        <span className="health-badge health-pending mono">
-                          🟡 Pending
+                        <span className="boundary-badge boundary-none mono muted">
+                          — Ready
                         </span>
                       )}
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Actions */}
-                  <td className="cell-actions">
-                    <div className="table-actions-group">
-                      <button
-                        type="button"
-                        className="btn btn-small btn-secondary"
-                        onClick={() => onViewOnboarding(branch.teammateId)}
-                        title="View customized onboarding briefing"
-                      >
-                        Briefing →
-                      </button>
+                    {/* Health & Alignment */}
+                    <td className="cell-health">
+                      <div className="health-stack">
+                        {isMismatch ? (
+                          <span className="health-badge health-stale mono" title="Teammate reported 'Done' but 0 commits were recorded on this branch!">
+                            ⚠️ Mismatch (0 commits)
+                          </span>
+                        ) : branch.isStale ? (
+                          <span className="health-badge health-stale mono" title={`Inactive for ${branch.hoursSinceLastCommit || staleThreshold}+ hours`}>
+                            ⚠ Stale Nudge
+                          </span>
+                        ) : branch.status === 'done' ? (
+                          <span className="health-badge health-active mono">
+                            🎉 Completed
+                          </span>
+                        ) : branch.commitCount > 0 ? (
+                          <span className="health-badge health-active mono">
+                            🟢 Active
+                          </span>
+                        ) : (
+                          <span className="health-badge health-pending mono">
+                            🟡 Pending
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
-                      <button
-                        type="button"
-                        className="btn btn-small btn-secondary"
-                        onClick={() => handleSimulateCommit(branch.teammateId)}
-                        disabled={simulatingTeammateId === branch.teammateId}
-                        title="Simulate a commit to test live updates"
-                      >
-                        {simulatingTeammateId === branch.teammateId ? '⚡...' : '+ Commit'}
-                      </button>
+                    {/* Actions */}
+                    <td className="cell-actions">
+                      <div className="table-actions-group">
+                        <button
+                          type="button"
+                          className="btn btn-small btn-secondary"
+                          onClick={() => onViewOnboarding(branch.teammateId)}
+                          title="View customized onboarding briefing"
+                        >
+                          Briefing →
+                        </button>
 
-                      <button
-                        type="button"
-                        className="btn btn-small"
-                        onClick={() => handleCopy(cloneCmd, `cmd-${branch.teammateId}`)}
-                        title="Copy git checkout command"
-                      >
-                        {copiedLabel === `cmd-${branch.teammateId}` ? '✓' : 'Git'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+                        <button
+                          type="button"
+                          className="btn btn-small btn-secondary"
+                          onClick={() => handleSimulateCommit(branch.teammateId)}
+                          disabled={simulatingTeammateId === branch.teammateId}
+                          title="Simulate a commit to test live updates"
+                        >
+                          {simulatingTeammateId === branch.teammateId ? '⚡...' : '+ Commit'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`btn btn-small ${branch.boundaryCheckStatus === 'failed' ? 'btn-danger' : 'btn-ghost'}`}
+                          onClick={() => handleToggleBoundaryViolation(branch.teammateId)}
+                          disabled={togglingBoundaryId === branch.teammateId}
+                          title="Simulate CI boundary violation / resolution for this branch"
+                        >
+                          {togglingBoundaryId === branch.teammateId
+                            ? '...'
+                            : branch.boundaryCheckStatus === 'failed'
+                            ? '✓ Clean'
+                            : '⚡ Test CI Fail'}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-small"
+                          onClick={() => handleCopy(cloneCmd, `cmd-${branch.teammateId}`)}
+                          title="Copy git checkout command"
+                        >
+                          {copiedLabel === `cmd-${branch.teammateId}` ? '✓' : 'Git'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
           </tbody>
         </table>
       </div>

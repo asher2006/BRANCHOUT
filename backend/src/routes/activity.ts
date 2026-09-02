@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pollProjectActivity, simulateBranchCommit } from "../services/activityTracker.js";
+import { pollProjectActivity, simulateBranchCommit, toggleBoundaryViolation } from "../services/activityTracker.js";
 import { sendWebhookNudge } from "../services/notifications.js";
 import { generateMarkdownSummary, generateCsvSummary } from "../services/summaryExporter.js";
 import { getDb } from "../db.js";
@@ -58,6 +58,23 @@ router.post("/:id/activity/simulate-commit", (req, res) => {
   } catch (err: any) {
     console.error("Error simulating commit:", err);
     res.status(500).json({ error: err.message || "Failed to simulate commit" });
+  }
+});
+
+// POST /api/projects/:id/activity/toggle-boundary — Toggle simulated boundary violation
+router.post("/:id/activity/toggle-boundary", (req, res) => {
+  const { teammateId } = req.body;
+  if (!teammateId) {
+    res.status(400).json({ error: "teammateId is required" });
+    return;
+  }
+
+  try {
+    const result = toggleBoundaryViolation(Number(teammateId));
+    res.json(result);
+  } catch (err: any) {
+    console.error("Error toggling boundary violation:", err);
+    res.status(500).json({ error: err.message || "Failed to toggle boundary violation" });
   }
 });
 

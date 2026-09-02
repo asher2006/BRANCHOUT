@@ -51,6 +51,9 @@ export interface BranchActivity {
   isStale: boolean;
   hoursSinceLastCommit: number | null;
   snapshotAt: string;
+  boundaryCheckStatus?: 'passed' | 'failed' | 'pending' | 'none';
+  boundaryViolationCount?: number;
+  violatingFiles?: string[];
 }
 
 export interface ProjectActivityReport {
@@ -62,6 +65,8 @@ export interface ProjectActivityReport {
   activeBranchesCount: number;
   staleBranchesCount: number;
   openPrCount: number;
+  boundaryChecksPassedCount?: number;
+  boundaryChecksFailedCount?: number;
   isDemo: boolean;
   refreshedAt: string;
   branches: BranchActivity[];
