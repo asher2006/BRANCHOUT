@@ -7,9 +7,16 @@ interface ProjectCreatedProps {
   provisionResult?: ProvisionResult | null
   onCreateAnother: () => void
   onSelectTeammate?: (teammateId: number) => void
+  onViewDashboard?: (projectId: number) => void
 }
 
-export default function ProjectCreated({ project, provisionResult, onCreateAnother, onSelectTeammate }: ProjectCreatedProps) {
+export default function ProjectCreated({
+  project,
+  provisionResult,
+  onCreateAnother,
+  onSelectTeammate,
+  onViewDashboard,
+}: ProjectCreatedProps) {
   const [showLogs, setShowLogs] = useState(false)
   const [copiedText, setCopiedText] = useState<string | null>(null)
 
@@ -212,9 +219,20 @@ export default function ProjectCreated({ project, provisionResult, onCreateAnoth
         </section>
       )}
 
-      <div className="form-actions">
+      <div className="form-actions" style={{ gap: '12px' }}>
+        {onViewDashboard && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onViewDashboard(project.id)}
+            id="open-dashboard-btn"
+          >
+            📊 Open Live Contribution Dashboard →
+          </button>
+        )}
         <button
-          className="btn btn-primary"
+          type="button"
+          className="btn btn-secondary"
           onClick={onCreateAnother}
           id="create-another-btn"
         >

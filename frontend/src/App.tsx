@@ -3,10 +3,11 @@ import type { Project } from './types'
 import ProjectForm from './components/ProjectForm'
 import ProjectCreated from './components/ProjectCreated'
 import TeammateOnboarding from './components/TeammateOnboarding'
+import ContributionDashboard from './components/ContributionDashboard'
 import './index.css'
 
 type HealthStatus = 'checking' | 'online' | 'offline'
-type View = 'landing' | 'form' | 'created' | 'onboarding'
+type View = 'landing' | 'form' | 'created' | 'onboarding' | 'dashboard'
 
 function App() {
   const [health, setHealth] = useState<HealthStatus>('checking')
@@ -14,6 +15,7 @@ function App() {
   const [createdProject, setCreatedProject] = useState<Project | null>(null)
   const [provisionResult, setProvisionResult] = useState<any>(null)
   const [selectedTeammateId, setSelectedTeammateId] = useState<number | null>(null)
+  const [activeDashboardProjectId, setActiveDashboardProjectId] = useState<number | null>(null)
 
   // Parse initial hash route or handle hash changes
   useEffect(() => {
@@ -24,6 +26,14 @@ function App() {
         const id = parseInt(matchTeammate[1], 10)
         setSelectedTeammateId(id)
         setView('onboarding')
+        return
+      }
+
+      const matchDashboard = hash.match(/#\/?dashboard(?:\/(\d+))?/)
+      if (matchDashboard) {
+        const id = matchDashboard[1] ? parseInt(matchDashboard[1], 10) : 1
+        setActiveDashboardProjectId(id)
+        setView('dashboard')
       }
     }
 
@@ -60,6 +70,7 @@ function App() {
   const handleProjectCreated = (project: Project, result?: any) => {
     setCreatedProject(project)
     setProvisionResult(result || null)
+    setActiveDashboardProjectId(project.id)
     setView('created')
     window.location.hash = ''
   }
@@ -78,31 +89,68 @@ function App() {
     window.location.hash = `#/teammate/${teammateId}`
   }
 
+  const handleViewDashboard = (projectId: number) => {
+    setActiveDashboardProjectId(projectId)
+    setView('dashboard')
+    window.location.hash = `#/dashboard/${projectId}`
+  }
+
   const handleBackFromOnboarding = () => {
-    window.location.hash = ''
-    if (createdProject) {
+    if (activeDashboardProjectId) {
+      setView('dashboard')
+      window.location.hash = `#/dashboard/${activeDashboardProjectId}`
+    } else if (createdProject) {
       setView('created')
+      window.location.hash = ''
     } else {
       setView('landing')
+      window.location.hash = ''
     }
   }
 
   return (
     <>
       <nav className="nav" id="main-nav">
-        <div
-          className="nav-brand"
-          onClick={() => {
-            window.location.hash = ''
-            setView('landing')
-          }}
-          style={{ cursor: 'pointer' }}
-          role="button"
-          tabIndex={0}
-        >
-          <span className="prompt">&gt;_</span>
-          <span>branchout</span>
+        <div className="nav-left">
+          <div
+            className="nav-brand"
+            onClick={() => {
+              window.location.hash = ''
+              setView('landing')
+            }}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            tabIndex={0}
+          >
+            <span className="prompt">&gt;_</span>
+            <span>branchout</span>
+          </div>
+
+          <div className="nav-links">
+            <button
+              type="button"
+              className={`nav-link ${view === 'form' ? 'active' : ''}`}
+              onClick={() => {
+                window.location.hash = ''
+                setView('form')
+              }}
+            >
+              + New Brief
+            </button>
+            <button
+              type="button"
+              className={`nav-link ${view === 'dashboard' ? 'active' : ''}`}
+              onClick={() => {
+                const targetId = activeDashboardProjectId || createdProject?.id || 1
+                handleViewDashboard(targetId)
+              }}
+              id="nav-dashboard-link"
+            >
+              📊 Live Dashboard
+            </button>
+          </div>
         </div>
+
         <div className="nav-status">
           <span className={`status-dot ${health}`} />
           <span>{statusLabel[health]}</span>
@@ -121,14 +169,23 @@ function App() {
               auto-provisioned branches, generated prompts, and live contribution
               tracking.
             </p>
-            <button
-              className="btn btn-primary btn-cta"
-              onClick={() => setView('form')}
-              id="start-btn"
-            >
-              Create a project
-            </button>
-            <div className="version">v0.1.0 · phase 3</div>
+            <div className="landing-actions-row">
+              <button
+                className="btn btn-primary btn-cta"
+                onClick={() => setView('form')}
+                id="start-btn"
+              >
+                Create a project
+              </button>
+              <button
+                className="btn btn-secondary btn-cta"
+                onClick={() => handleViewDashboard(1)}
+                id="landing-dashboard-btn"
+              >
+                📊 View Live Dashboard
+              </button>
+            </div>
+            <div className="version">v0.1.0 · phase 4</div>
           </div>
         )}
 
@@ -142,6 +199,7 @@ function App() {
             provisionResult={provisionResult}
             onCreateAnother={handleCreateAnother}
             onSelectTeammate={handleSelectTeammate}
+            onViewDashboard={handleViewDashboard}
           />
         )}
 
@@ -149,6 +207,14 @@ function App() {
           <TeammateOnboarding
             teammateId={selectedTeammateId}
             onBack={handleBackFromOnboarding}
+          />
+        )}
+
+        {view === 'dashboard' && (
+          <ContributionDashboard
+            projectId={activeDashboardProjectId || createdProject?.id || 1}
+            onViewOnboarding={handleSelectTeammate}
+            onBackToProjects={() => setView('landing')}
           />
         )}
       </main>

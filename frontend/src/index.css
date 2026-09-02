@@ -1240,6 +1240,416 @@ a:hover {
   margin-top: 4px;
 }
 
+/* ---- Nav Links & Landing Actions ---- */
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+.nav-links {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.nav-link {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-raised);
+}
+
+.nav-link.active {
+  color: var(--accent);
+  background: var(--accent-glow);
+  border-color: var(--accent-dim);
+}
+
+.landing-actions-row {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ---- Contribution Dashboard ---- */
+.dashboard-container {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding-bottom: var(--space-3xl);
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.dashboard-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.dashboard-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.btn-warning-glow {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: var(--warning-dim);
+}
+
+/* ---- Stat Metrics Grid ---- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-md);
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  transition: border-color var(--transition-fast);
+}
+
+.stat-card-warning {
+  border-color: var(--warning);
+  background: rgba(255, 178, 36, 0.04);
+}
+
+.stat-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.accent-number { color: var(--accent); }
+.warning-number { color: var(--warning); }
+.info-number { color: var(--info); }
+
+.stat-subtext {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.stale-alert-banner {
+  align-items: center;
+}
+
+/* ---- Dashboard Toolbar ---- */
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.toolbar-label {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.select-input {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: var(--bg-root);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.toolbar-status-text {
+  margin-left: auto;
+  font-size: 0.6875rem;
+}
+
+/* ---- Live Activity Table ---- */
+.activity-table-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.8125rem;
+}
+
+.activity-table th {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-surface-raised);
+}
+
+.activity-table td {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.activity-row {
+  transition: background var(--transition-fast);
+}
+
+.activity-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.activity-row.row-stale {
+  background: rgba(255, 178, 36, 0.04);
+  border-left: 3px solid var(--warning);
+}
+
+.tm-name-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tm-handle {
+  font-size: 0.75rem;
+}
+
+.branch-table-link {
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.branch-table-link:hover {
+  text-decoration: underline;
+}
+
+.commits-count-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.active-commits {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+}
+
+.zero-commits {
+  background: var(--bg-root);
+  color: var(--text-dimmed);
+  border: 1px solid var(--border-subtle);
+}
+
+.last-commit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.last-commit-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.text-warning {
+  color: var(--warning);
+  font-weight: 500;
+}
+
+.last-commit-msg {
+  font-size: 0.6875rem;
+}
+
+/* PR badges */
+.pr-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.pr-open {
+  background: rgba(92, 154, 255, 0.15);
+  border: 1px solid var(--info);
+  color: var(--info);
+}
+
+.pr-merged {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.pr-draft {
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-default);
+  color: var(--text-muted);
+}
+
+.pr-none, .pr-closed {
+  color: var(--text-dimmed);
+}
+
+/* Health badges */
+.health-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.health-stale {
+  background: var(--warning-dim);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  font-weight: 600;
+  animation: pulse-border 2s infinite ease-in-out;
+}
+
+.health-active {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+}
+
+.health-pending {
+  background: var(--bg-root);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--warning); }
+  50% { border-color: rgba(255, 178, 36, 0.3); }
+}
+
+.table-actions-group {
+  display: flex;
+  gap: 4px;
+}
+
+/* ---- Webhook Modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-md);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 540px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.webhook-preview-box {
+  background: var(--bg-root);
+  border: 1px solid var(--border-subtle);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+}
+
+.webhook-branches-list {
+  list-style: none;
+  font-size: 0.75rem;
+  margin-top: var(--space-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.webhook-branches-list li {
+  color: var(--text-secondary);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 640px) {
   .field-row.two-col {
@@ -1248,7 +1658,8 @@ a:hover {
 
   .project-form,
   .project-created,
-  .onboarding-page {
+  .onboarding-page,
+  .dashboard-container {
     padding: 0 var(--space-md);
   }
 
@@ -1258,7 +1669,8 @@ a:hover {
 
   .repo-summary-header,
   .prompt-section-header,
-  .branch-meta-row {
+  .branch-meta-row,
+  .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
   }

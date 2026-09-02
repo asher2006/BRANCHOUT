@@ -6,6 +6,7 @@ import { initializeDatabase } from "./db.js";
 import projectRoutes from "./routes/projects.js";
 import githubRoutes from "./routes/github.js";
 import teammateRoutes from "./routes/teammates.js";
+import activityRoutes from "./routes/activity.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/projects", projectRoutes);
+app.use("/api/projects", activityRoutes);
 app.use("/api/github", githubRoutes);
 app.use("/api/teammates", teammateRoutes);
 
