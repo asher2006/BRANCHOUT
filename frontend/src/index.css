@@ -2044,4 +2044,212 @@ a:hover {
     position: static;
     margin-bottom: var(--space-xs);
   }
+
+  .feature-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
+   LANDING HERO
+   ============================================ */
+
+.landing-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+  padding: var(--space-2xl) var(--space-lg);
+  overflow: hidden;
+}
+
+.hero-glow {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(
+    circle,
+    rgba(0, 212, 170, 0.08) 0%,
+    rgba(0, 212, 170, 0.03) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+}
+
+.hero-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: var(--space-lg);
+}
+
+.hero-title {
+  font-family: var(--font-mono);
+  font-size: 3.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-md);
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hero-prompt {
+  color: var(--accent);
+  font-weight: 400;
+}
+
+.typing-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: none;
+  animation: typeIn 1s steps(10) 0.3s both;
+  width: 0;
+}
+
+@keyframes typeIn {
+  from { width: 0; }
+  to { width: 10ch; }
+}
+
+.cursor-block {
+  display: inline-block;
+  width: 3px;
+  height: 1.1em;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.hero-subtitle {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-xl);
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-subtitle code {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  background: var(--accent-glow);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.9375em;
+}
+
+.landing-actions-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-cta {
+  font-size: 0.9375rem;
+  padding: 12px 28px;
+}
+
+.feature-cards {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-3xl);
+  max-width: 780px;
+  width: 100%;
+}
+
+.feature-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  transition: border-color var(--transition-base), transform var(--transition-base);
+}
+
+.feature-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: var(--space-sm);
+}
+
+.feature-card h3 {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xs);
+}
+
+.feature-card p {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.feature-card code {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-size: 0.85em;
+}
+
+.version {
+  margin-top: var(--space-xl);
+  font-size: 0.6875rem;
+  color: var(--text-dimmed);
+  letter-spacing: 0.1em;
+}
+
+/* ============================================
+   INPUT VALIDATION
+   ============================================ */
+
+.input.input-invalid {
+  border-color: var(--error) !important;
+  box-shadow: 0 0 0 1px rgba(255, 68, 102, 0.2);
+}
+
+.validation-error {
+  color: var(--error);
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }

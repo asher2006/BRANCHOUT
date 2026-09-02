@@ -90,6 +90,9 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
     log(`Cloud repository target: ${repoUrl}`);
     log(`Simulated commit: SHARED_CONVENTIONS.md committed to branch 'main'`);
     log(`Simulated commit: README.md committed to branch 'main'`);
+    log(`Simulated commit: .branchout/ownership.json committed to branch 'main'`);
+    log(`Simulated commit: .github/workflows/boundary-check.yml committed to branch 'main'`);
+    log(`Simulated branch protection: required status check 'boundary-check' enabled on 'main' (admin override preserved)`);
 
     const branches = params.teammates.map((tm) => {
       log(`Simulated branch cut from 'main': ${tm.branch_name}`);
@@ -109,7 +112,12 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
       repoName: cleanRepoName,
       defaultBranch: "main",
       branches,
-      filesCommitted: ["README.md", "SHARED_CONVENTIONS.md"],
+      filesCommitted: [
+        "README.md",
+        "SHARED_CONVENTIONS.md",
+        ".branchout/ownership.json",
+        ".github/workflows/boundary-check.yml",
+      ],
       logs,
     };
   }
@@ -205,6 +213,34 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
     filesCommitted.push("README.md");
     log("Successfully committed README.md to cloud");
 
+    // 4b. Commit .branchout/ownership.json on default branch
+    const manifestContent = generateOwnershipManifest(params);
+    log(`Committing .branchout/ownership.json manifest to branch '${defaultBranch}'...`);
+    await commitFile(octokit, {
+      owner,
+      repo,
+      path: ".branchout/ownership.json",
+      content: manifestContent,
+      message: "chore: add boundary ownership manifest",
+      branch: defaultBranch,
+    });
+    filesCommitted.push(".branchout/ownership.json");
+    log("Successfully committed .branchout/ownership.json to cloud");
+
+    // 4c. Commit .github/workflows/boundary-check.yml on default branch
+    const workflowContent = generateBoundaryCheckWorkflow();
+    log(`Committing .github/workflows/boundary-check.yml to branch '${defaultBranch}'...`);
+    await commitFile(octokit, {
+      owner,
+      repo,
+      path: ".github/workflows/boundary-check.yml",
+      content: workflowContent,
+      message: "ci: add boundary-check workflow to enforce path isolation",
+      branch: defaultBranch,
+    });
+    filesCommitted.push(".github/workflows/boundary-check.yml");
+    log("Successfully committed .github/workflows/boundary-check.yml to cloud");
+
     // 5. Get default branch SHA
     log(`Resolving '${defaultBranch}' branch reference commit SHA...`);
     const refData = await octokit.git.getRef({
@@ -253,6 +289,26 @@ export async function provisionGitHubRepo(params: ProvisionRepoParams): Promise<
           });
         }
       }
+    }
+
+    // 7. Set branch protection on default branch requiring 'boundary-check'
+    try {
+      log(`Setting branch protection on '${defaultBranch}' requiring 'boundary-check'...`);
+      await octokit.repos.updateBranchProtection({
+        owner,
+        repo,
+        branch: defaultBranch,
+        required_status_checks: {
+          strict: false,
+          contexts: ["boundary-check"],
+        },
+        enforce_admins: false,
+        required_pull_request_reviews: null,
+        restrictions: null,
+      });
+      log(`Branch protection enabled on '${defaultBranch}' (boundary-check required, admin override preserved)`);
+    } catch (bpErr: any) {
+      log(`Branch protection notice: ${bpErr.message} (may require GitHub Pro/Team for private repositories)`);
     }
 
     return {
@@ -360,3 +416,148 @@ function generateReadmeDoc(params: ProvisionRepoParams): string {
   parts.push(`Please review [SHARED_CONVENTIONS.md](./SHARED_CONVENTIONS.md) before writing code.`);
   return parts.join("\n");
 }
+
+export function generateOwnershipManifest(params: ProvisionRepoParams): string {
+  const manifest = {
+    teammates: params.teammates.map((tm) => ({
+      github_username: tm.github_username,
+      branch_name: tm.branch_name,
+      owned_paths: tm.owned_paths,
+    })),
+    shared_paths: [
+      "README.md",
+      "SHARED_CONVENTIONS.md",
+      ".github/",
+    ],
+  };
+  return JSON.stringify(manifest, null, 2);
+}
+
+export function generateBoundaryCheckWorkflow(): string {
+  return `name: Boundary Check
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  boundary-check:
+    name: boundary-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify isolation boundaries
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              console.log('Not a pull request event. Skipping.');
+              return;
+            }
+
+            const manifestPath = '.branchout/ownership.json';
+            if (!fs.existsSync(manifestPath)) {
+              console.log('No .branchout/ownership.json manifest found. Skipping boundary check.');
+              return;
+            }
+
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            const teammates = manifest.teammates || [];
+            const sharedPaths = manifest.shared_paths || [];
+
+            const branchName = pr.head.ref;
+            const teammate = teammates.find(t => t.branch_name === branchName);
+
+            if (!teammate) {
+              console.log(\`Branch "\${branchName}" is not an assigned teammate branch in ownership manifest. Skipping boundary check.\`);
+              return;
+            }
+
+            // Fetch changed files for this PR
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            function isPathAllowed(filePath, allowedPrefixes) {
+              const normFile = filePath.replace(/^\\.\\//, '');
+              return allowedPrefixes.some(prefix => {
+                const normPrefix = prefix.replace(/^\\.\\//, '');
+                if (normPrefix.endsWith('/')) {
+                  return normFile.startsWith(normPrefix);
+                }
+                return normFile === normPrefix || normFile.startsWith(normPrefix + '/');
+              });
+            }
+
+            const allowedPaths = [...(teammate.owned_paths || []), ...sharedPaths];
+            const violations = [];
+
+            for (const f of files) {
+              const filename = f.filename;
+              if (!isPathAllowed(filename, allowedPaths)) {
+                violations.push(filename);
+              }
+            }
+
+            const botIdentifier = '<!-- branchout-boundary-check -->';
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+            const existingComment = comments.data.find(c => c.body && c.body.includes(botIdentifier));
+
+            if (violations.length > 0) {
+              const body = \`\${botIdentifier}\\n### ⚠️ Boundary Check Failed\\n\\n\` +
+                \`**@\${teammate.github_username}** on branch \\\`\${branchName}\\\`, your PR touches files outside your declared \\\`owned_paths\\\`:\\n\\n\` +
+                \`**Offending files:**\\n\` +
+                violations.map(v => \`- \\\`\${v}\\\`\`).join('\\n') + \`\\n\\n\` +
+                \`**Your declared owned paths:**\\n\` +
+                (teammate.owned_paths.length > 0 ? teammate.owned_paths.map(p => \`- \\\`\${p}\\\`\`).join('\\n') : '- *(None declared)*') + \`\\n\\n\` +
+                \`**Shared paths (allowed for all):**\\n\` +
+                sharedPaths.map(p => \`- \\\`\${p}\\\`\`).join('\\n') + \`\\n\\n\` +
+                \`*Please revert modifications to out-of-bounds files to merge into \\\`main\\\`.*\`;
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body,
+                });
+              }
+
+              core.setFailed(\`Boundary check failed: \${violations.length} files modified outside declared owned_paths.\`);
+            } else {
+              console.log('✅ All changed files are within declared boundaries.');
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: \`\${botIdentifier}\\n### ✅ Boundary Check Passed\\nAll changed files fall within declared \\\`owned_paths\\\` or \\\`shared_paths\\\`.\`,
+                });
+              }
+            }
+`;
+}
+

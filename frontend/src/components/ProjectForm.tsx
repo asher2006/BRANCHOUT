@@ -57,6 +57,10 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   const [summary, setSummary] = useState('')
   const [allocatedTeammates, setAllocatedTeammates] = useState<TeammateInput[]>([])
 
+  // Validation
+  const [membersTouched, setMembersTouched] = useState(false)
+  const hasEmptyMembers = members.slice(0, teamSize).some((m) => !m.name.trim())
+
   // GitHub Launch Options
   const [existingRepoUrl, setExistingRepoUrl] = useState('')
   const [newRepoName, setNewRepoName] = useState('')
@@ -108,6 +112,11 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
 
   // Divide the work via AI (Grok / Groq / Fallback)
   const handleDivideWork = async (promptOverride?: string) => {
+    setMembersTouched(true)
+    if (hasEmptyMembers) {
+      setDecomposeError('All team member names are required before dividing work.')
+      return
+    }
     const promptToUse = promptOverride || ideaPrompt
     if (!promptToUse.trim()) {
       setDecomposeError('Please describe what your team is building (or select an idea preset).')
@@ -317,13 +326,17 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                 <div className="field">
                   <input
                     type="text"
-                    className="input mono"
+                    className={`input mono ${membersTouched && !member.name.trim() ? 'input-invalid' : ''}`}
                     style={{ fontSize: '0.875rem', padding: '8px 12px' }}
                     placeholder={`Name (e.g. Alice)`}
                     value={member.name}
                     onChange={(e) => handleMemberNameChange(idx, e.target.value)}
+                    onBlur={() => setMembersTouched(true)}
                     required
                   />
+                  {membersTouched && !member.name.trim() && (
+                    <span className="validation-error">⚠ Name is required</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -387,7 +400,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
             className="btn btn-primary"
             style={{ fontSize: '0.9375rem', padding: '10px 20px' }}
             onClick={() => handleDivideWork()}
-            disabled={decomposing || !ideaPrompt.trim()}
+            disabled={decomposing || !ideaPrompt.trim() || hasEmptyMembers}
             id="btn-divide-work"
           >
             {decomposing ? (

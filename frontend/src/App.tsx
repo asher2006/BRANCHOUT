@@ -159,33 +159,59 @@ function App() {
 
       <main className={`main ${view !== 'landing' ? 'main-top' : ''}`} id="main-content">
         {view === 'landing' && (
-          <div className="shell-placeholder">
-            <h1>
-              <span className="mono">ready</span>
-              <span className="cursor-block" />
-            </h1>
-            <p>
-              Branchout coordinates hackathon teams — structured briefs,
-              auto-provisioned branches, generated prompts, and live contribution
-              tracking.
-            </p>
-            <div className="landing-actions-row">
-              <button
-                className="btn btn-primary btn-cta"
-                onClick={() => setView('form')}
-                id="start-btn"
-              >
-                Create a project
-              </button>
-              <button
-                className="btn btn-secondary btn-cta"
-                onClick={() => handleViewDashboard(1)}
-                id="landing-dashboard-btn"
-              >
-                📊 View Live Dashboard
-              </button>
+          <div className="landing-hero" id="landing-hero">
+            <div className="hero-glow" />
+
+            <div className="hero-content">
+              <div className="hero-badge mono">OPEN SOURCE · HACKATHON TOOLKIT</div>
+              <h1 className="hero-title">
+                <span className="hero-prompt mono">&gt;_</span>{' '}
+                <span className="typing-text">branchout</span>
+                <span className="cursor-block" />
+              </h1>
+              <p className="hero-subtitle">
+                Paste your repo, describe your idea, and let AI divide work into
+                zero-conflict branches — so every teammate codes independently and
+                merges cleanly into <code>main</code>.
+              </p>
+
+              <div className="landing-actions-row">
+                <button
+                  className="btn btn-primary btn-cta"
+                  onClick={() => setView('form')}
+                  id="start-btn"
+                >
+                  Create a project
+                </button>
+                <button
+                  className="btn btn-secondary btn-cta"
+                  onClick={() => handleViewDashboard(1)}
+                  id="landing-dashboard-btn"
+                >
+                  📊 View Live Dashboard
+                </button>
+              </div>
             </div>
-            <div className="version">v0.1.0 · phase 4</div>
+
+            <div className="feature-cards">
+              <div className="feature-card">
+                <div className="feature-icon">🔗</div>
+                <h3>Paste Repo</h3>
+                <p>Connect your newly created GitHub repository in a single step. Branchout auto-detects the project name.</p>
+              </div>
+              <div className="feature-card">
+                <div className="feature-icon">🤖</div>
+                <h3>AI Divides Work</h3>
+                <p>Describe your idea and AI splits it into non-overlapping tasks, owned paths, and dedicated branches.</p>
+              </div>
+              <div className="feature-card">
+                <div className="feature-icon">🚀</div>
+                <h3>Push & Merge</h3>
+                <p>Each teammate works on their branch, pushes changes, and opens a PR to merge into <code>main</code>.</p>
+              </div>
+            </div>
+
+            <div className="version mono">v1.0.0</div>
           </div>
         )}
 
