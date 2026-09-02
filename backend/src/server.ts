@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import path from "path";
@@ -7,6 +8,7 @@ import projectRoutes from "./routes/projects.js";
 import githubRoutes from "./routes/github.js";
 import teammateRoutes from "./routes/teammates.js";
 import activityRoutes from "./routes/activity.js";
+import aiRoutes from "./routes/ai.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +33,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/projects", activityRoutes);
 app.use("/api/github", githubRoutes);
 app.use("/api/teammates", teammateRoutes);
+app.use("/api/ai", aiRoutes);
 
 // In production, serve the frontend build
 const FRONTEND_DIST = path.join(__dirname, "..", "..", "frontend", "dist");

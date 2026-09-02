@@ -8,15 +8,21 @@
 
 In hackathons, work is often assigned informally in chat or whiteboards. Before long, one person ends up writing all the code, merge conflicts erupt across overlapping files, and there is zero visibility into who is actually building what until submission time.
 
-**Branchout** solves this without touching an in-app editor or writing code for you:
-1. Takes a **structured, manually written project brief** with shared conventions and path ownership allocations.
-2. Auto-provisions a **GitHub repository**, commits `SHARED_CONVENTIONS.md` to `main`, and cuts **one isolated branch per teammate**.
-3. Generates a **deterministic, boundary-aware AI master prompt** for each person to hand to their own coding agent (Claude Code, Cursor, Windsurf) in their own IDE with strict isolation rules preventing merge conflicts.
-4. Tracks **real-time commit and PR activity** on a live dashboard with **stale branch nudges**, **status mismatch detection**, **Discord/Slack webhook alerts**, and **1-click Markdown/CSV exports**.
+**Branchout** solves this without requiring manual form filling or touching an in-app editor:
+1. **AI Architect as Default**: Takes an unstructured hackathon idea in plain English (or 1-click inspiration preset), automatically designs the system architecture, recommends the tech stack, sets `SHARED_CONVENTIONS.md`, and allocates **strictly non-overlapping, conflict-free tasks and directory paths** across teammates.
+2. **Auto-Provisions GitHub**: Provisions the repository, commits `SHARED_CONVENTIONS.md` & `README.md` to `main`, and cuts **one isolated branch per teammate**.
+3. **Generates Master Prompts**: Crafts a deterministic, boundary-aware prompt for each teammate's coding agent (Claude Code, Cursor, Windsurf) in their own IDE with strict isolation rules preventing merge conflicts.
+4. **Tracks Live Activity**: Monitors real-time commits and PRs on a live dashboard with **stale branch nudges**, **status mismatch detection**, **Discord/Slack webhook alerts**, and **1-click Markdown/CSV exports**.
 
 ---
 
-## ✨ Features by Phase
+## ✨ Features
+
+### 🌟 AI Auto-Breakdown & Task Allocator (NEW)
+- **Zero-Setup for Users**: Users simply type their hackathon idea or problem statement (or choose a 1-click preset).
+- **Intelligent Architecture Decomposition**: Decomposes the idea into a recommended tech stack, structured `SHARED_CONVENTIONS.md`, and **non-overlapping tasks and owned file paths** across teammates.
+- **Merge-Conflict Prevention by Design**: Strictly partitions directory boundaries so teammates' coding agents never clash.
+- **Backend Multi-Provider Support**: Calls Google Gemini (`gemini-1.5-flash`), Groq (`llama-3.3-70b`), or OpenAI via backend environment variables (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`), with a built-in semantic architect engine that works 100% offline out-of-the-box.
 
 ### 0. Scaffolding & Terminal Design System
 - **Dark, terminal-inspired aesthetic**: Flat surfaces, high-contrast monospace accents, no generic gradients or drop shadows.

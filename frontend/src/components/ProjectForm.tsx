@@ -1,27 +1,46 @@
-import { useState, useMemo } from 'react'
-import type { TeammateInput, ProjectInput, Project, OwnershipConflict, BalanceWarning, ProvisionResult } from '../types'
-import { checkOwnershipConflicts, checkWorkloadBalance } from '../utils/validation'
-import TeammateRow from './TeammateRow'
-
-const emptyTeammate = (): TeammateInput => ({
-  name: '',
-  github_username: '',
-  task_description: '',
-  owned_paths: [],
-})
+import { useState } from 'react'
+import type { TeammateInput, ProjectInput, Project, ProvisionResult } from '../types'
 
 interface ProjectFormProps {
   onSuccess: (project: Project, provisionResult?: ProvisionResult) => void
 }
 
+const PRESET_IDEAS = [
+  {
+    title: '🎨 Real-Time Collab Whiteboard',
+    prompt: 'A real-time collaborative whiteboard app with live cursor tracking, voice channels, interactive canvas drawing, and persistent boards for hackathon teams.',
+  },
+  {
+    title: '🤖 DevOps Incident Commander AI',
+    prompt: 'An AI-powered DevOps agent that monitors cloud alerts, inspects container logs, diagnoses root causes, and suggests incident remediation scripts.',
+  },
+  {
+    title: '🏃 Smart Health & Habit Tracker',
+    prompt: 'A mobile-friendly wellness and habit tracker that logs daily routines, provides AI coaching insights, and gamifies team fitness challenges.',
+  },
+  {
+    title: '🛡️ Web3 Smart Contract Auditor',
+    prompt: 'A static analysis security tool that scans Solidity smart contracts for reentrancy and access-control vulnerabilities with interactive remediation diffs.',
+  },
+]
+
 export default function ProjectForm({ onSuccess }: ProjectFormProps) {
+  // Step 1: AI Prompt & Decomposition State
+  const [ideaPrompt, setIdeaPrompt] = useState('')
+  const [teamSize, setTeamSize] = useState<number>(3)
+  const [decomposing, setDecomposing] = useState(false)
+  const [decomposeError, setDecomposeError] = useState<string | null>(null)
+
+  // Generated Plan State
+  const [decomposed, setDecomposed] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [techStack, setTechStack] = useState('')
   const [conventions, setConventions] = useState('')
-  const [teammates, setTeammates] = useState<TeammateInput[]>([emptyTeammate(), emptyTeammate()])
-  
-  // GitHub provisioning states
+  const [teammates, setTeammates] = useState<TeammateInput[]>([])
+  const [showConventionsEditor, setShowConventionsEditor] = useState(false)
+
+  // GitHub Provisioning State
   const [githubPat, setGithubPat] = useState('')
   const [repoName, setRepoName] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
@@ -32,29 +51,54 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
 
   const [submitting, setSubmitting] = useState(false)
   const [provisionProgress, setProvisionProgress] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Live validation
-  const conflicts: OwnershipConflict[] = useMemo(
-    () => checkOwnershipConflicts(teammates),
-    [teammates]
-  )
+  // Trigger AI Decomposition
+  const handleDecompose = async (promptOverride?: string) => {
+    const promptToUse = promptOverride || ideaPrompt
+    if (!promptToUse.trim()) {
+      setDecomposeError('Please enter your hackathon idea or select a quick inspiration preset.')
+      return
+    }
 
-  const balanceWarning: BalanceWarning | null = useMemo(
-    () => checkWorkloadBalance(teammates),
-    [teammates]
-  )
+    setDecomposing(true)
+    setDecomposeError(null)
 
-  const updateTeammate = (index: number, updated: TeammateInput) => {
-    setTeammates(prev => prev.map((t, i) => (i === index ? updated : t)))
-  }
+    try {
+      const res = await fetch('/api/ai/decompose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ideaPrompt: promptToUse.trim(),
+          teamSize,
+        }),
+      })
 
-  const addTeammate = () => {
-    setTeammates(prev => [...prev, emptyTeammate()])
-  }
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to decompose problem statement')
+      }
 
-  const removeTeammate = (index: number) => {
-    setTeammates(prev => prev.filter((_, i) => i !== index))
+      const result = data.data
+      setName(result.projectName)
+      setRepoName(result.projectName)
+      setDescription(result.description)
+      setTechStack(result.techStack)
+      setConventions(result.sharedConventions)
+      setTeammates(
+        result.teammates.map((tm: any) => ({
+          name: tm.name,
+          github_username: tm.githubUsername,
+          task_description: tm.taskDescription,
+          owned_paths: tm.ownedPaths,
+        }))
+      )
+      setDecomposed(true)
+    } catch (err: any) {
+      setDecomposeError(err.message || 'An error occurred during AI decomposition.')
+    } finally {
+      setDecomposing(false)
+    }
   }
 
   const handleTestToken = async () => {
@@ -82,24 +126,24 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
+    setSubmitError(null)
 
     if (!name.trim()) {
-      setError('Project name is required')
+      setSubmitError('Project name is required')
       return
     }
 
     const activeTeammates = teammates.filter(
-      t => t.name.trim() && t.github_username.trim()
+      (t) => t.name.trim() && t.github_username.trim()
     )
 
     if (activeTeammates.length === 0) {
-      setError('At least one teammate with name and GitHub username is required')
+      setSubmitError('At least one teammate with name and GitHub username is required')
       return
     }
 
     setSubmitting(true)
-    setProvisionProgress('Saving project brief to database...')
+    setProvisionProgress('Saving AI-generated project plan to database...')
 
     try {
       const payload: ProjectInput = {
@@ -125,7 +169,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       const project: Project = await res.json()
 
       // 2. Provision GitHub repository
-      setProvisionProgress('Provisioning GitHub repository and cutting branches...')
+      setProvisionProgress('Provisioning GitHub repository, committing conventions & cutting teammate branches...')
       const provisionRes = await fetch(`/api/projects/${project.id}/provision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,11 +186,10 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         project.github_repo_url = provisionResult.repoUrl
         onSuccess(project, provisionResult)
       } else {
-        // Still proceed to success page even if provisioning had an issue
         onSuccess(project)
       }
     } catch (err: any) {
-      setError(err.message || 'Something went wrong')
+      setSubmitError(err.message || 'Something went wrong')
     } finally {
       setSubmitting(false)
       setProvisionProgress(null)
@@ -154,265 +197,380 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   }
 
   return (
-    <form className="project-form" onSubmit={handleSubmit} id="project-form">
+    <div className="project-form" id="ai-project-planner">
+      {/* Header */}
       <div className="form-header">
-        <h1>New project brief</h1>
+        <div className="ai-modal-badge mono">✨ AI ARCHITECT</div>
+        <h1 style={{ marginTop: '4px' }}>AI Hackathon Project Architect</h1>
         <p className="form-subtitle">
-          Define your project, set shared conventions, and auto-provision GitHub branches.
+          Enter your problem statement. Branchout automatically designs the architecture, sets shared conventions,
+          and allocates conflict-free tasks and branches across your team.
         </p>
       </div>
 
-      {/* ---- Project Details ---- */}
-      <section className="form-section" id="project-details">
-        <h2 className="section-title">
-          <span className="section-icon mono">01</span>
-          Project
-        </h2>
-
-        <div className="field">
-          <label htmlFor="project-name" className="field-label">Project name *</label>
-          <input
-            id="project-name"
-            type="text"
-            className="input"
-            placeholder="hackathon-tracker"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value)
-              if (!repoName) {
-                setRepoName(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-'))
-              }
-            }}
-            required
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="project-description" className="field-label">Description</label>
-          <textarea
-            id="project-description"
-            className="input textarea"
-            placeholder="A tool that..."
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="project-tech-stack" className="field-label">Tech stack</label>
-          <input
-            id="project-tech-stack"
-            type="text"
-            className="input"
-            placeholder="React, Node, PostgreSQL, Redis"
-            value={techStack}
-            onChange={(e) => setTechStack(e.target.value)}
-          />
-        </div>
-      </section>
-
-      {/* ---- Shared Conventions ---- */}
-      <section className="form-section" id="conventions-section">
-        <h2 className="section-title">
-          <span className="section-icon mono">02</span>
-          Shared conventions
-        </h2>
-        <p className="section-description">
-          Coding standards, naming patterns, and project rules that every teammate should follow.
-          This will be committed as <code>SHARED_CONVENTIONS.md</code> on the repository's <code>main</code> branch.
-        </p>
-
-        <div className="field">
-          <label htmlFor="conventions" className="field-label">Conventions (markdown)</label>
-          <textarea
-            id="conventions"
-            className="input textarea textarea-tall mono"
-            placeholder={"# Conventions\n\n- Use TypeScript strict mode\n- Naming: camelCase for variables, PascalCase for components\n- All API routes start with /api/\n- Commit messages: type(scope): description"}
-            rows={8}
-            value={conventions}
-            onChange={(e) => setConventions(e.target.value)}
-          />
-        </div>
-      </section>
-
-      {/* ---- Teammates ---- */}
-      <section className="form-section" id="teammates-section">
-        <h2 className="section-title">
-          <span className="section-icon mono">03</span>
-          Teammates
-          <span className="badge">{teammates.length}</span>
-        </h2>
-
-        {/* Validation warnings */}
-        {conflicts.length > 0 && (
-          <div className="warning-banner" id="conflict-warning">
-            <span className="warning-icon">⚠</span>
-            <div>
-              <strong>Ownership conflicts detected</strong>
-              <ul className="warning-list">
-                {conflicts.map((c, i) => (
-                  <li key={i}>
-                    <code>{c.path}</code> — claimed by {c.owners.join(' & ')}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {balanceWarning && (
-          <div className="warning-banner warning-info" id="balance-warning">
-            <span className="warning-icon">⚖</span>
-            <div>
-              <strong>{balanceWarning.message}</strong>
-              <p>{balanceWarning.details}</p>
-            </div>
-          </div>
-        )}
-
-        <div className="teammates-list">
-          {teammates.map((mate, i) => (
-            <TeammateRow
-              key={i}
-              index={i}
-              teammate={mate}
-              onChange={updateTeammate}
-              onRemove={removeTeammate}
-              canRemove={teammates.length > 1}
-            />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-add-teammate"
-          onClick={addTeammate}
-          id="add-teammate-btn"
-        >
-          + Add teammate
-        </button>
-      </section>
-
-      {/* ---- GitHub Provisioning Section ---- */}
-      <section className="form-section" id="github-section">
-        <h2 className="section-title">
-          <span className="section-icon mono">04</span>
-          GitHub Repository Provisioning
-        </h2>
-        <p className="section-description">
-          Branchout will automatically create your GitHub repo, commit <code>SHARED_CONVENTIONS.md</code> to <code>main</code>, and cut one branch per teammate.
-        </p>
-
-        <div className="field">
-          <div className="field-header-row">
-            <label htmlFor="github-pat" className="field-label">GitHub Personal Access Token (PAT)</label>
-            <span className="security-tag mono">🔒 Session only · Never persisted</span>
-          </div>
-          <div className="pat-input-container">
-            <input
-              id="github-pat"
-              type={showPat ? "text" : "password"}
-              className="input mono"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              value={githubPat}
-              onChange={(e) => {
-                setGithubPat(e.target.value)
-                setTokenStatus(null)
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-small"
-              onClick={() => setShowPat(!showPat)}
-              title={showPat ? "Hide token" : "Show token"}
-            >
-              {showPat ? "Hide" : "Show"}
-            </button>
-            <button
-              type="button"
-              className="btn btn-small btn-secondary"
-              onClick={handleTestToken}
-              disabled={tokenTesting || !githubPat.trim()}
-              id="test-token-btn"
-            >
-              {tokenTesting ? "Testing..." : "Verify Token"}
-            </button>
-          </div>
-
-          {tokenStatus && (
-            <div className={`token-status-badge ${tokenStatus.valid ? 'token-valid' : 'token-invalid'}`}>
-              {tokenStatus.valid ? (
-                <span>✓ Authenticated with GitHub as <strong>@{tokenStatus.username}</strong></span>
-              ) : (
-                <span>✗ {tokenStatus.error}</span>
-              )}
-            </div>
+      {/* ---- STEP 1: Problem Statement Input ---- */}
+      <section className="form-section ai-planner-section" id="ai-planner-input">
+        <div className="section-title-row">
+          <h2 className="section-title">
+            <span className="section-icon mono">01</span>
+            Describe your idea or problem statement
+          </h2>
+          {decomposed && (
+            <span className="badge-tag mono" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+              ✓ Plan Generated
+            </span>
           )}
         </div>
 
-        <div className="field-row two-col">
-          <div className="field">
-            <label htmlFor="repo-name" className="field-label">Repository name</label>
-            <input
-              id="repo-name"
-              type="text"
-              className="input mono"
-              placeholder="my-hackathon-repo"
-              value={repoName}
-              onChange={(e) => setRepoName(e.target.value)}
-            />
-          </div>
-          <div className="field checkbox-field">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={isPrivate}
-                onChange={(e) => setIsPrivate(e.target.checked)}
-                id="is-private-checkbox"
-              />
-              <span>Create as Private Repository</span>
-            </label>
-            <label className="checkbox-label demo-toggle">
-              <input
-                type="checkbox"
-                checked={isDemo}
-                onChange={(e) => setIsDemo(e.target.checked)}
-                id="is-demo-checkbox"
-              />
-              <span>Demo Mode (Simulate GitHub actions without real PAT)</span>
-            </label>
+        {/* Preset Chips */}
+        <div className="field">
+          <span className="field-label mono">QUICK INSPIRATION PRESETS:</span>
+          <div className="ai-preset-chips">
+            {PRESET_IDEAS.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="ai-preset-chip"
+                onClick={() => {
+                  setIdeaPrompt(preset.prompt)
+                  setDecomposeError(null)
+                  handleDecompose(preset.prompt)
+                }}
+              >
+                {preset.title}
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* Textarea */}
+        <div className="field">
+          <textarea
+            id="idea-prompt-input"
+            className="input textarea mono"
+            rows={3}
+            placeholder="e.g. A real-time collaborative whiteboard app with live cursor tracking, voice channels, and interactive canvas drawing for hackathon teams..."
+            value={ideaPrompt}
+            onChange={(e) => setIdeaPrompt(e.target.value)}
+          />
+        </div>
+
+        {/* Team Size Selector & Trigger Button */}
+        <div className="field-row two-col" style={{ alignItems: 'flex-end', marginTop: 'var(--space-md)' }}>
+          <div className="field">
+            <label htmlFor="team-size-select" className="field-label">
+              Team Size (Teammates)
+            </label>
+            <select
+              id="team-size-select"
+              className="input select-input mono"
+              value={teamSize}
+              onChange={(e) => setTeamSize(parseInt(e.target.value, 10))}
+            >
+              <option value={2}>2 Teammates</option>
+              <option value={3}>3 Teammates</option>
+              <option value={4}>4 Teammates</option>
+              <option value={5}>5 Teammates</option>
+              <option value={6}>6 Teammates</option>
+            </select>
+          </div>
+
+          <div className="field" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="btn btn-primary ai-decompose-btn"
+              onClick={() => handleDecompose()}
+              disabled={decomposing || !ideaPrompt.trim()}
+              id="btn-auto-decompose"
+            >
+              {decomposing ? (
+                <>
+                  <span className="spinner" style={{ width: 14, height: 14 }} />
+                  <span>Designing Architecture...</span>
+                </>
+              ) : decomposed ? (
+                '🔄 Re-Generate Architecture'
+              ) : (
+                '✨ Auto-Decompose & Allocate Tasks'
+              )}
+            </button>
+          </div>
+        </div>
+
+        {decomposeError && (
+          <div className="error-banner" style={{ marginTop: '12px' }}>
+            {decomposeError}
+          </div>
+        )}
       </section>
 
-      {/* ---- Submit ---- */}
-      {error && (
-        <div className="error-banner" id="form-error">
-          {error}
-        </div>
-      )}
+      {/* ---- STEP 2: AI-Generated Project & Team Plan (Auto-revealed) ---- */}
+      {decomposed && (
+        <form onSubmit={handleSubmit}>
+          {/* Architecture Overview */}
+          <section className="form-section" id="ai-generated-overview">
+            <h2 className="section-title">
+              <span className="section-icon mono">02</span>
+              System Architecture & Tech Stack
+            </h2>
 
-      {provisionProgress && (
-        <div className="progress-banner" id="provision-progress">
-          <span className="spinner" />
-          <span>{provisionProgress}</span>
-        </div>
-      )}
+            <div className="field-row two-col">
+              <div className="field">
+                <label htmlFor="project-name" className="field-label">Project Name (Repo Slug)</label>
+                <input
+                  id="project-name"
+                  type="text"
+                  className="input mono"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setRepoName(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-'))
+                  }}
+                  required
+                />
+              </div>
 
-      <div className="form-actions">
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={submitting}
-          id="submit-btn"
-        >
-          {submitting ? 'Provisioning Repo...' : 'Create & Provision Repo'}
-        </button>
-        <span className="form-hint">
-          {conflicts.length > 0 && '⚠ Conflicts present — you can still submit'}
-        </span>
-      </div>
-    </form>
+              <div className="field">
+                <label htmlFor="project-tech-stack" className="field-label">Recommended Tech Stack</label>
+                <input
+                  id="project-tech-stack"
+                  type="text"
+                  className="input"
+                  value={techStack}
+                  onChange={(e) => setTechStack(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="project-description" className="field-label">Project Summary</label>
+              <textarea
+                id="project-description"
+                className="input textarea"
+                rows={2}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            {/* Expandable Conventions Editor */}
+            <div style={{ marginTop: 'var(--space-md)' }}>
+              <button
+                type="button"
+                className="btn btn-small btn-secondary"
+                onClick={() => setShowConventionsEditor(!showConventionsEditor)}
+                id="toggle-conventions-btn"
+              >
+                {showConventionsEditor ? '▲ Hide SHARED_CONVENTIONS.md' : '▼ View / Edit SHARED_CONVENTIONS.md'}
+              </button>
+              {showConventionsEditor && (
+                <div className="field" style={{ marginTop: 'var(--space-sm)' }}>
+                  <textarea
+                    id="conventions"
+                    className="input textarea textarea-tall mono"
+                    rows={8}
+                    value={conventions}
+                    onChange={(e) => setConventions(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Conflict-Free Teammate Allocations */}
+          <section className="form-section" id="ai-teammates-allocation">
+            <div className="section-title-row">
+              <h2 className="section-title">
+                <span className="section-icon mono">03</span>
+                Conflict-Free Task Allocations
+                <span className="badge">{teammates.length}</span>
+              </h2>
+              <span className="security-tag mono" style={{ color: 'var(--accent)' }}>
+                ✓ Zero Path Conflicts Guaranteed
+              </span>
+            </div>
+            <p className="section-description">
+              Each teammate is allocated dedicated, isolated directory paths. Their AI coding agent will be restricted to these boundaries to eliminate merge conflicts.
+            </p>
+
+            <div className="ai-teammates-preview-grid">
+              {teammates.map((mate, i) => (
+                <div key={i} className="ai-tm-card">
+                  <div className="ai-tm-head">
+                    <input
+                      type="text"
+                      className="input mono"
+                      style={{ padding: '2px 6px', fontSize: '0.8125rem', width: '45%' }}
+                      value={mate.name}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setTeammates((prev) => prev.map((t, idx) => (idx === i ? { ...t, name: val } : t)))
+                      }}
+                      placeholder="Name"
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px', width: '50%' }}>
+                      <span className="mono muted" style={{ fontSize: '0.75rem' }}>@</span>
+                      <input
+                        type="text"
+                        className="input mono"
+                        style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
+                        value={mate.github_username}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setTeammates((prev) => prev.map((t, idx) => (idx === i ? { ...t, github_username: val } : t)))
+                        }}
+                        placeholder="github"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '4px' }}>
+                    <textarea
+                      className="input textarea"
+                      style={{ fontSize: '0.75rem', padding: '4px 6px', minHeight: '52px' }}
+                      value={mate.task_description}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setTeammates((prev) => prev.map((t, idx) => (idx === i ? { ...t, task_description: val } : t)))
+                      }}
+                      placeholder="Task objective"
+                    />
+                  </div>
+
+                  <div className="ai-tm-paths mono">
+                    {mate.owned_paths.map((p, idx) => (
+                      <span key={idx} className="path-tag">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="ai-tm-branch mono muted" style={{ marginTop: '4px' }}>
+                    ↳ <code>{`${mate.task_description.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20)}-${mate.github_username}`}</code>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* STEP 3: GitHub Repository Provisioning */}
+          <section className="form-section" id="github-provision-section">
+            <h2 className="section-title">
+              <span className="section-icon mono">04</span>
+              GitHub Repository Provisioning
+            </h2>
+            <p className="section-description">
+              Branchout will automatically create your GitHub repo, commit <code>SHARED_CONVENTIONS.md</code> to <code>main</code>, and cut one branch per teammate.
+            </p>
+
+            <div className="field">
+              <div className="field-header-row">
+                <label htmlFor="github-pat" className="field-label">GitHub Personal Access Token (PAT)</label>
+                <span className="security-tag mono">🔒 Session only · Never persisted</span>
+              </div>
+              <div className="pat-input-container">
+                <input
+                  id="github-pat"
+                  type={showPat ? "text" : "password"}
+                  className="input mono"
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={githubPat}
+                  onChange={(e) => {
+                    setGithubPat(e.target.value)
+                    setTokenStatus(null)
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  onClick={() => setShowPat(!showPat)}
+                  title={showPat ? "Hide token" : "Show token"}
+                >
+                  {showPat ? "Hide" : "Show"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-small btn-secondary"
+                  onClick={handleTestToken}
+                  disabled={tokenTesting || !githubPat.trim()}
+                  id="test-token-btn"
+                >
+                  {tokenTesting ? "Testing..." : "Verify Token"}
+                </button>
+              </div>
+
+              {tokenStatus && (
+                <div className={`token-status-badge ${tokenStatus.valid ? 'token-valid' : 'token-invalid'}`}>
+                  {tokenStatus.valid ? (
+                    <span>✓ Authenticated with GitHub as <strong>@{tokenStatus.username}</strong></span>
+                  ) : (
+                    <span>✗ {tokenStatus.error}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="field-row two-col">
+              <div className="field">
+                <label htmlFor="repo-name" className="field-label">Repository Name</label>
+                <input
+                  id="repo-name"
+                  type="text"
+                  className="input mono"
+                  placeholder="my-hackathon-repo"
+                  value={repoName}
+                  onChange={(e) => setRepoName(e.target.value)}
+                />
+              </div>
+              <div className="field checkbox-field">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                    id="is-private-checkbox"
+                  />
+                  <span>Create as Private Repository</span>
+                </label>
+                <label className="checkbox-label demo-toggle">
+                  <input
+                    type="checkbox"
+                    checked={isDemo}
+                    onChange={(e) => setIsDemo(e.target.checked)}
+                    id="is-demo-checkbox"
+                  />
+                  <span>Demo Mode (Simulate GitHub actions without real PAT)</span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          {/* Submit Actions */}
+          {submitError && (
+            <div className="error-banner" id="form-error">
+              {submitError}
+            </div>
+          )}
+
+          {provisionProgress && (
+            <div className="progress-banner" id="provision-progress">
+              <span className="spinner" />
+              <span>{provisionProgress}</span>
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={submitting}
+              id="submit-btn"
+            >
+              {submitting ? 'Provisioning Repository...' : '🚀 Provision GitHub Repo & Cut Branches'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   )
 }
