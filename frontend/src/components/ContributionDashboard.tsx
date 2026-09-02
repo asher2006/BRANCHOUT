@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import type { ProjectActivityReport, BranchActivity } from '../types'
+import ExportSummaryModal from './ExportSummaryModal'
 
 interface ContributionDashboardProps {
   projectId: number
@@ -28,8 +29,12 @@ export default function ContributionDashboard({
   const [sendingWebhook, setSendingWebhook] = useState(false)
   const [webhookResult, setWebhookResult] = useState<{ success: boolean; message: string } | null>(null)
 
+  // Export Modal state
+  const [showExportModal, setShowExportModal] = useState(false)
+
   // Quick feedback
   const [simulatingTeammateId, setSimulatingTeammateId] = useState<number | null>(null)
+  const [updatingStatusId, setUpdatingStatusId] = useState<number | null>(null)
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
 
   const fetchActivity = useCallback(async (isManualRefresh = false) => {
@@ -77,13 +82,37 @@ export default function ContributionDashboard({
         body: JSON.stringify({ teammateId }),
       })
       if (res.ok) {
-        // Refresh activity immediately
         await fetchActivity(false)
       }
     } catch (e) {
       console.error('Failed to simulate commit:', e)
     } finally {
       setSimulatingTeammateId(null)
+    }
+  }
+
+  const handleStatusChange = async (teammateId: number, newStatus: 'not_started' | 'in_progress' | 'done') => {
+    setUpdatingStatusId(teammateId)
+    try {
+      const res = await fetch(`/api/teammates/${teammateId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        if (report) {
+          setReport({
+            ...report,
+            branches: report.branches.map((b) =>
+              b.teammateId === teammateId ? { ...b, status: newStatus } : b
+            ),
+          })
+        }
+      }
+    } catch (e) {
+      console.error('Failed to update status:', e)
+    } finally {
+      setUpdatingStatusId(null)
     }
   }
 
@@ -175,6 +204,9 @@ export default function ContributionDashboard({
   if (!report) return null
 
   const staleBranches = report.branches.filter((b) => b.isStale)
+  const mismatchesCount = report.branches.filter(
+    (b) => b.status === 'done' && b.commitCount === 0
+  ).length
 
   return (
     <div className="dashboard-container" id="contribution-dashboard">
@@ -210,6 +242,14 @@ export default function ContributionDashboard({
           )}
           <button
             type="button"
+            className="btn btn-small btn-primary"
+            onClick={() => setShowExportModal(true)}
+            id="open-export-modal-btn"
+          >
+            📦 Export Summary
+          </button>
+          <button
+            type="button"
             className={`btn btn-small ${staleBranches.length > 0 ? 'btn-warning-glow' : ''}`}
             onClick={() => setShowWebhookModal(true)}
             id="open-webhook-modal-btn"
@@ -218,7 +258,7 @@ export default function ContributionDashboard({
           </button>
           <button
             type="button"
-            className="btn btn-primary btn-small"
+            className="btn btn-secondary btn-small"
             onClick={() => fetchActivity(true)}
             disabled={refreshing}
             id="refresh-dashboard-btn"
@@ -258,11 +298,15 @@ export default function ContributionDashboard({
           </div>
         </div>
 
-        <div className="stat-card">
-          <span className="stat-label mono">OPEN PULL REQUESTS</span>
+        <div className={`stat-card ${mismatchesCount > 0 ? 'stat-card-warning' : ''}`}>
+          <span className="stat-label mono">STATUS MISMATCHES</span>
           <div className="stat-value-row">
-            <span className="stat-number mono info-number">{report.openPrCount}</span>
-            <span className="stat-subtext">ready for review</span>
+            <span className={`stat-number mono ${mismatchesCount > 0 ? 'warning-number' : 'accent-number'}`}>
+              {mismatchesCount}
+            </span>
+            <span className="stat-subtext">
+              {mismatchesCount > 0 ? 'Reported Done with 0 commits' : 'Self-reports match activity'}
+            </span>
           </div>
         </div>
       </div>
@@ -335,7 +379,8 @@ export default function ContributionDashboard({
               <th>COMMITS</th>
               <th>LAST ACTIVITY</th>
               <th>PR STATUS</th>
-              <th>HEALTH</th>
+              <th>SELF REPORT</th>
+              <th>HEALTH & ALIGNMENT</th>
               <th>ACTIONS</th>
             </tr>
           </thead>
@@ -343,11 +388,12 @@ export default function ContributionDashboard({
             {report.branches.map((branch: BranchActivity) => {
               const branchHref = report.githubRepoUrl ? `${report.githubRepoUrl}/tree/${branch.branchName}` : '#'
               const cloneCmd = `git checkout ${branch.branchName}`
+              const isMismatch = branch.status === 'done' && branch.commitCount === 0
 
               return (
                 <tr
                   key={branch.teammateId}
-                  className={`activity-row ${branch.isStale ? 'row-stale' : ''}`}
+                  className={`activity-row ${branch.isStale || isMismatch ? 'row-stale' : ''}`}
                   id={`row-teammate-${branch.teammateId}`}
                 >
                   {/* Teammate */}
@@ -395,8 +441,8 @@ export default function ContributionDashboard({
                       </span>
                       {branch.lastCommitMessage && (
                         <span className="last-commit-msg mono muted" title={branch.lastCommitMessage}>
-                          {branch.lastCommitMessage.slice(0, 32)}
-                          {branch.lastCommitMessage.length > 32 ? '…' : ''}
+                          {branch.lastCommitMessage.slice(0, 28)}
+                          {branch.lastCommitMessage.length > 28 ? '…' : ''}
                         </span>
                       )}
                     </div>
@@ -428,21 +474,46 @@ export default function ContributionDashboard({
                     )}
                   </td>
 
-                  {/* Health */}
+                  {/* Self-Reported Status Picker */}
+                  <td className="cell-self-report">
+                    <select
+                      className={`status-select mono status-select-${branch.status}`}
+                      value={branch.status}
+                      onChange={(e) => handleStatusChange(branch.teammateId, e.target.value as any)}
+                      disabled={updatingStatusId === branch.teammateId}
+                      title="Change teammate self-reported status"
+                    >
+                      <option value="not_started">Not Started</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="done">Done ✓</option>
+                    </select>
+                  </td>
+
+                  {/* Health & Alignment */}
                   <td className="cell-health">
-                    {branch.isStale ? (
-                      <span className="health-badge health-stale mono" title={`Inactive for ${branch.hoursSinceLastCommit || staleThreshold}+ hours`}>
-                        ⚠ Stale Nudge
-                      </span>
-                    ) : branch.commitCount > 0 ? (
-                      <span className="health-badge health-active mono">
-                        🟢 Active
-                      </span>
-                    ) : (
-                      <span className="health-badge health-pending mono">
-                        🟡 Getting Started
-                      </span>
-                    )}
+                    <div className="health-stack">
+                      {isMismatch ? (
+                        <span className="health-badge health-stale mono" title="Teammate reported 'Done' but 0 commits were recorded on this branch!">
+                          ⚠️ Mismatch (0 commits)
+                        </span>
+                      ) : branch.isStale ? (
+                        <span className="health-badge health-stale mono" title={`Inactive for ${branch.hoursSinceLastCommit || staleThreshold}+ hours`}>
+                          ⚠ Stale Nudge
+                        </span>
+                      ) : branch.status === 'done' ? (
+                        <span className="health-badge health-active mono">
+                          🎉 Completed
+                        </span>
+                      ) : branch.commitCount > 0 ? (
+                        <span className="health-badge health-active mono">
+                          🟢 Active
+                        </span>
+                      ) : (
+                        <span className="health-badge health-pending mono">
+                          🟡 Pending
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Actions */}
@@ -483,6 +554,15 @@ export default function ContributionDashboard({
           </tbody>
         </table>
       </div>
+
+      {/* ---- Export Summary Modal ---- */}
+      {showExportModal && (
+        <ExportSummaryModal
+          projectId={projectId}
+          report={report}
+          onClose={() => setShowExportModal(false)}
+        />
+      )}
 
       {/* ---- Webhook Notification Modal ---- */}
       {showWebhookModal && (

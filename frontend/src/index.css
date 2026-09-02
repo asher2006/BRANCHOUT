@@ -1650,6 +1650,107 @@ a:hover {
   margin-top: var(--space-md);
 }
 
+/* ---- Export Summary Modal ---- */
+.export-modal-card {
+  max-width: 720px;
+}
+
+.export-tabs-row {
+  display: flex;
+  gap: var(--space-xs);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-xs);
+}
+
+.export-tab-btn {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.export-tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-raised);
+}
+
+.export-tab-btn.active {
+  background: var(--accent-glow);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.export-modal-body {
+  max-height: 400px;
+}
+
+.export-preview-container {
+  background: #06060a;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.export-preview-box {
+  padding: var(--space-md);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #c8c8d8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.export-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+/* ---- Table Status Selectors & Health Stack ---- */
+.status-select {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-root);
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+}
+
+.status-select-not_started {
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.status-select-in_progress {
+  border-color: var(--info);
+  background: rgba(92, 154, 255, 0.08);
+  color: var(--info);
+}
+
+.status-select-done {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.health-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 640px) {
   .field-row.two-col {

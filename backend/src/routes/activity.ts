@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { pollProjectActivity, simulateBranchCommit } from "../services/activityTracker.js";
 import { sendWebhookNudge } from "../services/notifications.js";
+import { generateMarkdownSummary, generateCsvSummary } from "../services/summaryExporter.js";
+import { getDb } from "../db.js";
 
 const router = Router();
 
@@ -83,6 +85,57 @@ router.post("/:id/notify-webhook", async (req, res) => {
   } catch (err: any) {
     console.error("Webhook notification error:", err);
     res.status(500).json({ error: err.message || "Failed to deliver webhook notification" });
+  }
+});
+
+// GET /api/projects/:id/export/markdown — Export end-of-hackathon markdown summary
+router.get("/:id/export/markdown", async (req, res) => {
+  const { id } = req.params;
+  const { pat, threshold } = req.query;
+  const db = getDb();
+
+  try {
+    const report = await pollProjectActivity(
+      Number(id),
+      pat as string | undefined,
+      threshold ? parseFloat(threshold as string) : 3
+    );
+
+    const pResult = db.exec(`SELECT * FROM projects WHERE id = ?`, [id]);
+    const project = pResult.length > 0 && pResult[0].values.length > 0 ? {
+      name: pResult[0].values[0][1],
+      description: pResult[0].values[0][2],
+      tech_stack: pResult[0].values[0][3],
+    } : undefined;
+
+    const markdown = generateMarkdownSummary(report, project);
+    res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+    res.send(markdown);
+  } catch (err: any) {
+    console.error("Export markdown error:", err);
+    res.status(500).send("Failed to generate markdown export");
+  }
+});
+
+// GET /api/projects/:id/export/csv — Export end-of-hackathon CSV
+router.get("/:id/export/csv", async (req, res) => {
+  const { id } = req.params;
+  const { pat, threshold } = req.query;
+
+  try {
+    const report = await pollProjectActivity(
+      Number(id),
+      pat as string | undefined,
+      threshold ? parseFloat(threshold as string) : 3
+    );
+
+    const csv = generateCsvSummary(report);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${report.projectName}-hackathon-summary.csv"`);
+    res.send(csv);
+  } catch (err: any) {
+    console.error("Export CSV error:", err);
+    res.status(500).send("Failed to generate CSV export");
   }
 });
 
