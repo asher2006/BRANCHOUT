@@ -60,8 +60,6 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   // GitHub Launch Options
   const [existingRepoUrl, setExistingRepoUrl] = useState('')
   const [newRepoName, setNewRepoName] = useState('')
-  const [isDemo, setIsDemo] = useState(true)
-  const [githubPat, setGithubPat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -203,17 +201,16 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       // 2. Provision repo & cut branches
       setSubmitProgress(
         existingRepoUrl.trim()
-          ? 'Connecting to cloud repository, setting up conventions & branches...'
-          : 'Provisioning cloud repository & cutting teammate branches...'
+          ? 'Connecting to repository, setting up conventions & branches...'
+          : 'Setting up conventions & cutting teammate branches...'
       )
       const provisionRes = await fetch(`/api/projects/${project.id}/provision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pat: githubPat.trim() || undefined,
           repoName: !existingRepoUrl.trim() ? (newRepoName.trim() || projectName) : undefined,
           existingRepoUrl: existingRepoUrl.trim() || undefined,
-          isDemo: isDemo || !githubPat.trim(),
+          isDemo: true,
         }),
       })
 
@@ -485,7 +482,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                 </div>
               </div>
 
-              {/* If repo wasn't entered in Step 1, allow entering or creating one here */}
+              {/* If repo wasn't entered in Step 1, allow entering it here */}
               {!existingRepoUrl && (
                 <div className="field" style={{ marginBottom: 'var(--space-sm)' }}>
                   <label htmlFor="existing-repo-url" className="field-label">
@@ -501,38 +498,6 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                   />
                 </div>
               )}
-
-              {/* PAT & Demo Mode Row */}
-              <div className="field-row two-col" style={{ alignItems: 'flex-start', marginTop: 'var(--space-sm)' }}>
-                <div className="field">
-                  <label htmlFor="github-pat-input" className="field-label">
-                    Optional: GitHub Personal Access Token (PAT)
-                  </label>
-                  <input
-                    id="github-pat-input"
-                    type="password"
-                    className="input mono"
-                    placeholder="Optional: ghp_xxxxxxxxxxxxxxxxxxxxxxxx"
-                    value={githubPat}
-                    onChange={(e) => setGithubPat(e.target.value)}
-                  />
-                  <span className="muted" style={{ fontSize: '0.6875rem', marginTop: '2px', display: 'block' }}>
-                    Enter PAT to auto-cut branches on GitHub; or leave blank to launch with ready-to-use terminal checkout &amp; push commands.
-                  </span>
-                </div>
-
-                <div className="field checkbox-field" style={{ paddingTop: '24px' }}>
-                  <label className="checkbox-label demo-toggle" style={{ fontSize: '0.8125rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={isDemo}
-                      onChange={(e) => setIsDemo(e.target.checked)}
-                      id="is-demo-checkbox"
-                    />
-                    <span>⚡ <strong>Demo Mode</strong> (Instant simulation)</span>
-                  </label>
-                </div>
-              </div>
             </div>
 
             {submitError && (

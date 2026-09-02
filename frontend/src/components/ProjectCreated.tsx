@@ -38,9 +38,10 @@ export default function ProjectCreated({
       <div className="success-header">
         <div className="success-icon">✓</div>
         <h1>Repository & Branches Provisioned</h1>
-        <p className="mono project-name-display">{project.name}</p>
-        {provisionResult?.isDemo && (
-          <div className="demo-badge mono">✦ Simulated Demo Mode (No GitHub PAT used)</div>
+        {repoUrl && (
+          <div className="demo-badge mono" style={{ color: 'var(--accent)', borderColor: 'rgba(92, 225, 230, 0.3)' }}>
+            ✦ Connected: {repoUrl}
+          </div>
         )}
       </div>
 
