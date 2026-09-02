@@ -51,6 +51,11 @@ export interface BranchActivity {
   isStale: boolean;
   hoursSinceLastCommit: number | null;
   snapshotAt: string;
+  aheadBy: number;
+  behindBy: number;
+  mergeable: boolean | null;
+  checks: 'passing' | 'failing' | 'pending' | 'unknown';
+  mergeReadiness: 'no_pr' | 'draft' | 'needs_rebase' | 'checks_failing' | 'checks_pending' | 'ready' | 'merged' | 'blocked';
 }
 
 export interface ProjectActivityReport {

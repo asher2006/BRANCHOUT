@@ -61,6 +61,19 @@ export async function initializeDatabase(): Promise<Database> {
     );
   `);
 
+  // Backward-compatible additions for merge-readiness snapshots.
+  for (const statement of [
+    `ALTER TABLE commit_snapshots ADD COLUMN behind_by INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE commit_snapshots ADD COLUMN mergeable INTEGER`,
+    `ALTER TABLE commit_snapshots ADD COLUMN checks TEXT NOT NULL DEFAULT 'unknown'`,
+  ]) {
+    try {
+      db.run(statement);
+    } catch (error: any) {
+      if (!String(error?.message || error).toLowerCase().includes('duplicate column')) throw error;
+    }
+  }
+
   // Persist to disk
   saveDatabase();
 
