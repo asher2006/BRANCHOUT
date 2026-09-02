@@ -3,6 +3,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { initializeDatabase } from "./db.js";
+import projectRoutes from "./routes/projects.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,8 @@ app.get("/api/health", (_req, res) => {
     version: "0.1.0",
   });
 });
+
+app.use("/api/projects", projectRoutes);
 
 // In production, serve the frontend build
 const FRONTEND_DIST = path.join(__dirname, "..", "..", "frontend", "dist");
