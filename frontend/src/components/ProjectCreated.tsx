@@ -79,6 +79,8 @@ export default function ProjectCreated({
             <div className="file-badges">
               <span className="file-badge mono">📄 SHARED_CONVENTIONS.md</span>
               <span className="file-badge mono">📄 README.md</span>
+              <span className="file-badge mono">🛡️ .branchout/ownership.json</span>
+              <span className="file-badge mono">⚙️ .github/workflows/boundary-check.yml</span>
             </div>
           </div>
         </section>

@@ -50,6 +50,7 @@ export function generateClientMasterPrompt(project: Project, teammate: Teammate,
       const paths = other.owned_paths.length > 0 ? other.owned_paths.map((p) => `\`${p}\``).join(', ') : '*(None specified)*'
       sections.push(`- **${other.name}** (@${other.github_username}) on \`${other.branch_name}\` owns: ${paths}`)
     }
+    sections.push(`\n> 🚨 **HARD CI CONSTRAINT:** A GitHub Actions CI \`boundary-check\` runs on every pull request targeting \`main\`. If your PR touches ANY file outside your declared owned paths (or allowed \`shared_paths\`), the CI check will fail, comment on the PR with the offending files, and block merging into \`main\`. Treat these boundaries as hard constraints.`)
   }
 
   // Shared Conventions
@@ -74,7 +75,7 @@ export function generateClientMasterPrompt(project: Project, teammate: Teammate,
   } else {
     sections.push(`   \`\`\`bash\ngit checkout -b ${teammate.branch_name}\n\`\`\``)
   }
-  sections.push(`2. **Build Within Your Boundaries:** Work strictly inside your assigned paths.`)
+  sections.push(`2. **Build Within Your Boundaries:** Work strictly inside your assigned paths. Automated CI (\`boundary-check\`) will fail and block your PR if files outside your owned paths are changed.`)
   sections.push(`3. **Push Changes to Your Branch:**`)
   sections.push(`   \`\`\`bash`)
   sections.push(`   git add .`)
