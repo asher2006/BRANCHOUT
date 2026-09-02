@@ -5,7 +5,7 @@ const router = Router();
 
 // POST /api/ai/decompose — Decomposes problem statement into structured project brief
 router.post("/decompose", async (req, res) => {
-  const { ideaPrompt, teamSize, teammateRoles } = req.body;
+  const { ideaPrompt, teamSize, teammateRoles, teamName } = req.body;
 
   if (!ideaPrompt || typeof ideaPrompt !== "string" || !ideaPrompt.trim()) {
     res.status(400).json({ error: "ideaPrompt is required" });
@@ -14,6 +14,7 @@ router.post("/decompose", async (req, res) => {
 
   try {
     const decomposition = await decomposeProblemStatement({
+      teamName: typeof teamName === "string" ? teamName.trim() : undefined,
       ideaPrompt: ideaPrompt.trim(),
       teamSize: teamSize ? parseInt(teamSize, 10) : 3,
       teammateRoles: Array.isArray(teammateRoles) ? teammateRoles : undefined,

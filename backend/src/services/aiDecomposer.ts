@@ -15,6 +15,7 @@ export interface ProjectDecomposition {
 }
 
 export interface DecomposeOptions {
+  teamName?: string;
   ideaPrompt: string;
   teamSize?: number;
   teammateRoles?: Array<{ name?: string; role?: string; githubUsername?: string }>;
@@ -34,7 +35,9 @@ function heuristicDecompose(options: DecomposeOptions): ProjectDecomposition {
   let projectName = 'hackathon-project';
   let techStack = 'TypeScript, React, Node.js, Express, SQLite';
 
-  if (prompt.includes('whiteboard') || prompt.includes('canvas') || prompt.includes('draw') || prompt.includes('realtime') || prompt.includes('collab')) {
+  if (options.teamName && options.teamName.trim()) {
+    projectName = options.teamName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  } else if (prompt.includes('whiteboard') || prompt.includes('canvas') || prompt.includes('draw') || prompt.includes('realtime') || prompt.includes('collab')) {
     domain = 'collaborative_canvas';
     projectName = 'collab-canvas';
     techStack = 'React, TypeScript, Canvas API, WebSockets, Node.js';
@@ -300,6 +303,28 @@ async function callGroq(apiKey: string, systemInstruction: string, prompt: strin
   return null;
 }
 
+function applyUserOverrides(result: ProjectDecomposition, options: DecomposeOptions): ProjectDecomposition {
+  if (options.teamName && options.teamName.trim()) {
+    result.projectName = options.teamName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  }
+  if (options.teammateRoles && Array.isArray(options.teammateRoles)) {
+    result.teammates = result.teammates.map((tm, idx) => {
+      const userTm = options.teammateRoles?.[idx];
+      if (!userTm) return tm;
+      const name = userTm.name?.trim() || tm.name;
+      const gh = userTm.githubUsername?.trim() || tm.githubUsername;
+      const taskSlug = tm.branchName.replace(new RegExp(`-${tm.githubUsername}$`), '');
+      return {
+        ...tm,
+        name,
+        githubUsername: gh,
+        branchName: `${taskSlug}-${gh}`,
+      };
+    });
+  }
+  return result;
+}
+
 /**
  * Calls an external LLM (xAI Grok, Groq, Gemini, OpenAI) if configured via environment variables.
  * Otherwise uses the built-in Intelligent Semantic Architecture Engine.
@@ -344,11 +369,23 @@ Respond ONLY with valid JSON matching this schema:
   ]
 }`;
 
+  let userPrompt = `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}`;
+  if (options.teamName && options.teamName.trim()) {
+    userPrompt += `\nTeam / Project Name: "${options.teamName.trim()}" (derive projectName slug from this)`;
+  }
+  if (options.teammateRoles && options.teammateRoles.length > 0) {
+    const members = options.teammateRoles
+      .slice(0, teamSize)
+      .map((m, i) => `  - Member ${i + 1}: Name="${m.name || `Member ${i + 1}`}", GitHub Handle="${m.githubUsername || `member-${i + 1}`}"`)
+      .join('\n');
+    userPrompt += `\nTeam Member Details:\n${members}\nAssign distinct, non-overlapping tasks and paths specifically to these ${teamSize} members.`;
+  }
+
   // 1. Try Grok / Groq API if key is present
   if (grokApiKey) {
     if (grokApiKey.startsWith('gsk_')) {
-      const groqResult = await callGroq(grokApiKey, systemInstruction, options.ideaPrompt, teamSize);
-      if (groqResult) return groqResult;
+      const groqResult = await callGroq(grokApiKey, systemInstruction, userPrompt, teamSize);
+      if (groqResult) return applyUserOverrides(groqResult, options);
     } else {
       // Standard xAI Grok API
       try {
@@ -362,7 +399,7 @@ Respond ONLY with valid JSON matching this schema:
             model: 'grok-2-latest',
             messages: [
               { role: 'system', content: systemInstruction },
-              { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
+              { role: 'user', content: userPrompt },
             ],
             temperature: 0.2,
           }),
@@ -375,7 +412,7 @@ Respond ONLY with valid JSON matching this schema:
             const parsed = cleanAndParseJson(content);
             if (parsed.projectName && Array.isArray(parsed.teammates)) {
               console.log('Successfully generated architecture via xAI Grok');
-              return parsed;
+              return applyUserOverrides(parsed, options);
             }
           }
         }
@@ -387,8 +424,8 @@ Respond ONLY with valid JSON matching this schema:
 
   // 2. Try separate GROQ_API_KEY if present
   if (groqApiKey) {
-    const groqResult = await callGroq(groqApiKey, systemInstruction, options.ideaPrompt, teamSize);
-    if (groqResult) return groqResult;
+    const groqResult = await callGroq(groqApiKey, systemInstruction, userPrompt, teamSize);
+    if (groqResult) return applyUserOverrides(groqResult, options);
   }
 
   // 3. Try Google Gemini API if key is present
@@ -405,7 +442,7 @@ Respond ONLY with valid JSON matching this schema:
                 role: 'user',
                 parts: [
                   {
-                    text: `${systemInstruction}\n\nProblem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}`,
+                    text: `${systemInstruction}\n\n${userPrompt}`,
                   },
                 ],
               },
@@ -425,7 +462,7 @@ Respond ONLY with valid JSON matching this schema:
           const parsed = cleanAndParseJson(rawText);
           if (parsed.projectName && Array.isArray(parsed.teammates)) {
             console.log('Successfully generated architecture via Google Gemini');
-            return parsed;
+            return applyUserOverrides(parsed, options);
           }
         }
       }
@@ -447,7 +484,7 @@ Respond ONLY with valid JSON matching this schema:
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemInstruction },
-            { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
+            { role: 'user', content: userPrompt },
           ],
           response_format: { type: 'json_object' },
           temperature: 0.2,
@@ -461,7 +498,7 @@ Respond ONLY with valid JSON matching this schema:
           const parsed = cleanAndParseJson(content);
           if (parsed.projectName && Array.isArray(parsed.teammates)) {
             console.log('Successfully generated architecture via OpenAI');
-            return parsed;
+            return applyUserOverrides(parsed, options);
           }
         }
       }
@@ -472,5 +509,5 @@ Respond ONLY with valid JSON matching this schema:
 
   // Built-in intelligent fallback engine
   console.log('Using built-in Semantic Architecture Engine');
-  return heuristicDecompose(options);
+  return applyUserOverrides(heuristicDecompose(options), options);
 }
