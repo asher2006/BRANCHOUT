@@ -462,6 +462,7 @@ export default function ContributionDashboard({
               <th>COMMITS</th>
               <th>LAST ACTIVITY</th>
               <th>PR STATUS</th>
+              <th>MERGE READINESS</th>
               <th>SELF REPORT</th>
               <th>CI BOUNDARY</th>
               <th>HEALTH & ALIGNMENT</th>
@@ -571,6 +572,24 @@ export default function ContributionDashboard({
                       {branch.prStatus === 'none' && (
                         <span className="pr-badge pr-none mono">No PR</span>
                       )}
+                    </td>
+
+                    {/* Merge Readiness */}
+                    <td className="cell-readiness">
+                      <div className="readiness-stack">
+                        <span className={`readiness-badge readiness-${branch.mergeReadiness} mono`} title={`Ahead ${branch.aheadBy} / behind ${branch.behindBy} · Checks: ${branch.checks}`}>
+                          {branch.mergeReadiness === 'ready' ? 'Ready to merge ✓' :
+                            branch.mergeReadiness === 'needs_rebase' ? `Rebase needed (${branch.behindBy})` :
+                            branch.mergeReadiness === 'checks_failing' ? 'Checks failing' :
+                            branch.mergeReadiness === 'checks_pending' ? 'Checks pending' :
+                            branch.mergeReadiness === 'merged' ? 'Merged ✓' :
+                            branch.mergeReadiness === 'draft' ? 'Draft PR' :
+                            branch.mergeReadiness === 'blocked' ? 'Needs review' : 'No PR'}
+                        </span>
+                        {branch.prStatus === 'open' && (
+                          <span className="readiness-detail mono">{branch.aheadBy} ahead · {branch.behindBy} behind</span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Self-Reported Status Picker */}

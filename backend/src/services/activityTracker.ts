@@ -1,5 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import { getDb, saveDatabase } from "../db.js";
+import { evaluateMergeReadiness, type CheckStatus, type MergeReadiness } from "./mergeReadiness.js";
 
 export interface BranchActivity {
   teammateId: number;
@@ -18,6 +19,11 @@ export interface BranchActivity {
   isStale: boolean;
   hoursSinceLastCommit: number | null;
   snapshotAt: string;
+  aheadBy: number;
+  behindBy: number;
+  mergeable: boolean | null;
+  checks: CheckStatus;
+  mergeReadiness: MergeReadiness;
   boundaryCheckStatus: 'passed' | 'failed' | 'pending' | 'none';
   boundaryViolationCount: number;
   violatingFiles?: string[];
@@ -98,6 +104,10 @@ export async function pollProjectActivity(
       let prStatus: BranchActivity["prStatus"] = "none";
       let prUrl: string | null = null;
       let prNumber: number | null = null;
+      let aheadBy = 0;
+      let behindBy = 0;
+      let mergeable: boolean | null = null;
+      let checks: CheckStatus = "unknown";
 
       try {
         // Compare with main to find branch-specific commits
@@ -108,6 +118,8 @@ export async function pollProjectActivity(
         });
 
         commitCount = compare.data.ahead_by;
+        aheadBy = compare.data.ahead_by;
+        behindBy = compare.data.behind_by;
         if (compare.data.commits.length > 0) {
           const latestCommit = compare.data.commits[compare.data.commits.length - 1];
           lastCommitAt = latestCommit.commit.author?.date || null;
@@ -127,6 +139,12 @@ export async function pollProjectActivity(
           const pr = pulls.data[0];
           prNumber = pr.number;
           prUrl = pr.html_url;
+          try {
+            const prDetail = await octokit.pulls.get({ owner, repo, pull_number: pr.number });
+            mergeable = prDetail.data.mergeable ?? null;
+          } catch (mergeError: any) {
+            console.warn(`Could not resolve mergeability for PR #${pr.number}:`, mergeError.message);
+          }
           if (pr.merged_at) {
             prStatus = "merged";
           } else if (pr.draft) {
@@ -135,6 +153,17 @@ export async function pollProjectActivity(
             prStatus = "open";
           } else {
             prStatus = "closed";
+          }
+          if (pr.head?.sha) {
+            try {
+              const combined = await octokit.repos.getCombinedStatusForRef({ owner, repo, ref: pr.head.sha });
+              if (combined.data.total_count === 0) checks = "unknown";
+              else if (combined.data.state === "failure" || combined.data.state === "error") checks = "failing";
+              else if (combined.data.state === "pending") checks = "pending";
+              else checks = "passing";
+            } catch (statusError: any) {
+              console.warn(`Could not poll checks for ${tm.branch_name}:`, statusError.message);
+            }
           }
         }
       } catch (e: any) {
@@ -146,6 +175,10 @@ export async function pollProjectActivity(
           lastCommitAt = cached.last_commit_at;
           prStatus = (cached.pr_status as any) || "none";
           prUrl = cached.pr_url;
+          aheadBy = commitCount;
+          behindBy = Number(cached.behind_by || 0);
+          mergeable = cached.mergeable === null || cached.mergeable === undefined ? null : Boolean(cached.mergeable);
+          checks = (cached.checks as CheckStatus) || "unknown";
         }
       }
 
@@ -186,7 +219,7 @@ export async function pollProjectActivity(
       }
 
       // Record snapshot in SQLite
-      insertSnapshot(db, tm.id, commitCount, lastCommitAt, prStatus, prUrl);
+      insertSnapshot(db, tm.id, commitCount, lastCommitAt, prStatus, prUrl, behindBy, mergeable, checks);
 
       branches.push({
         teammateId: tm.id,
@@ -203,6 +236,11 @@ export async function pollProjectActivity(
         prUrl,
         prNumber,
         isStale,
+        aheadBy,
+        behindBy,
+        mergeable,
+        checks,
+        mergeReadiness: evaluateMergeReadiness({ prStatus, behindBy, mergeable, checks }),
         hoursSinceLastCommit,
         snapshotAt: now.toISOString(),
         boundaryCheckStatus,
@@ -218,6 +256,10 @@ export async function pollProjectActivity(
       let lastCommitAt = cached ? cached.last_commit_at : null;
       let prStatus = (cached?.pr_status as any) || (commitCount > 2 ? "open" : "none");
       let prUrl = cached?.pr_url || (prStatus === "open" ? `${repoUrl}/pull/${tm.id}` : null);
+      const aheadBy = commitCount;
+      const behindBy = Number(cached?.behind_by || 0);
+      const mergeable = cached?.mergeable === null || cached?.mergeable === undefined ? null : Boolean(cached.mergeable);
+      const checks = (cached?.checks as CheckStatus) || (commitCount > 0 ? "passing" : "unknown");
 
       const { isStale, hoursSinceLastCommit } = computeStaleness(
         project.created_at,
@@ -254,6 +296,11 @@ export async function pollProjectActivity(
         prUrl,
         prNumber: prStatus === "open" ? tm.id : null,
         isStale,
+        aheadBy,
+        behindBy,
+        mergeable,
+        checks,
+        mergeReadiness: evaluateMergeReadiness({ prStatus, behindBy, mergeable, checks }),
         hoursSinceLastCommit,
         snapshotAt: now.toISOString(),
         boundaryCheckStatus,
@@ -334,6 +381,16 @@ export function simulateBranchCommit(teammateId: number): BranchActivity {
     isStale: false,
     hoursSinceLastCommit: 0,
     snapshotAt: now,
+    aheadBy: newCommitCount,
+    behindBy: 0,
+    mergeable: true,
+    checks: "passing",
+    mergeReadiness: evaluateMergeReadiness({
+      prStatus: newPrStatus,
+      behindBy: 0,
+      mergeable: true,
+      checks: "passing",
+    }),
     boundaryCheckStatus: "passed",
     boundaryViolationCount: 0,
     violatingFiles: [],
@@ -377,12 +434,15 @@ function insertSnapshot(
   commitCount: number,
   lastCommitAt: string | null,
   prStatus: string,
-  prUrl: string | null
+  prUrl: string | null,
+  behindBy = 0,
+  mergeable: boolean | null = null,
+  checks: CheckStatus = "unknown"
 ) {
   db.run(
-    `INSERT INTO commit_snapshots (teammate_id, commit_count, last_commit_at, pr_status, pr_url, snapshot_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-    [teammateId, commitCount, lastCommitAt, prStatus, prUrl]
+    `INSERT INTO commit_snapshots (teammate_id, commit_count, last_commit_at, pr_status, pr_url, behind_by, mergeable, checks, snapshot_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [teammateId, commitCount, lastCommitAt, prStatus, prUrl, behindBy, mergeable === null ? null : mergeable ? 1 : 0, checks]
   );
 }
 
