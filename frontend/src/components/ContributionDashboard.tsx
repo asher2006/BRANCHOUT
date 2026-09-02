@@ -364,6 +364,19 @@ export default function ContributionDashboard({
           </select>
         </div>
 
+        <div className="toolbar-group">
+          <label className="toolbar-label mono">GITHUB PAT (OPTIONAL):</label>
+          <input
+            type="password"
+            className="input select-input mono"
+            placeholder="Session token..."
+            style={{ width: 130 }}
+            value={userPat}
+            onChange={(e) => setUserPat(e.target.value)}
+            title="Optional GitHub token for private repositories"
+          />
+        </div>
+
         <div className="toolbar-status-text mono muted">
           Last polled: {new Date(report.refreshedAt).toLocaleTimeString()}
         </div>
