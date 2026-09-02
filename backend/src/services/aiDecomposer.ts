@@ -260,6 +260,46 @@ function cleanAndParseJson(text: string): any {
   }
 }
 
+async function callGroq(apiKey: string, systemInstruction: string, prompt: string, teamSize: number): Promise<ProjectDecomposition | null> {
+  const models = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b', 'llama-3.3-70b-versatile'];
+  for (const model of models) {
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemInstruction },
+            { role: 'user', content: `Problem Statement: "${prompt}"\nTeam Size: ${teamSize}` },
+          ],
+          temperature: 0.2,
+        }),
+      });
+
+      if (response.ok) {
+        const json = await response.json();
+        const content = json?.choices?.[0]?.message?.content;
+        if (content) {
+          const parsed = cleanAndParseJson(content);
+          if (parsed.projectName && Array.isArray(parsed.teammates)) {
+            console.log(`Successfully generated architecture via Groq (${model})`);
+            return parsed;
+          }
+        }
+      } else {
+        console.warn(`Groq model ${model} returned status: ${response.status}`);
+      }
+    } catch (e) {
+      console.warn(`Error trying Groq model ${model}:`, e);
+    }
+  }
+  return null;
+}
+
 /**
  * Calls an external LLM (xAI Grok, Groq, Gemini, OpenAI) if configured via environment variables.
  * Otherwise uses the built-in Intelligent Semantic Architecture Engine.
@@ -304,42 +344,11 @@ Respond ONLY with valid JSON matching this schema:
   ]
 }`;
 
-  // 1. Try xAI Grok API if key is present (or if key starts with xai-)
+  // 1. Try Grok / Groq API if key is present
   if (grokApiKey) {
-    // If it's a Groq key (starts with gsk_) accidentally passed as GROK_API_KEY
     if (grokApiKey.startsWith('gsk_')) {
-      try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${grokApiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            messages: [
-              { role: 'system', content: systemInstruction },
-              { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
-            ],
-            response_format: { type: 'json_object' },
-            temperature: 0.2,
-          }),
-        });
-
-        if (response.ok) {
-          const json = await response.json();
-          const content = json?.choices?.[0]?.message?.content;
-          if (content) {
-            const parsed = cleanAndParseJson(content);
-            if (parsed.projectName && Array.isArray(parsed.teammates)) {
-              console.log('Successfully generated architecture via Groq (Llama 3.3)');
-              return parsed;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Groq API call failed:', err);
-      }
+      const groqResult = await callGroq(grokApiKey, systemInstruction, options.ideaPrompt, teamSize);
+      if (groqResult) return groqResult;
     } else {
       // Standard xAI Grok API
       try {
@@ -369,8 +378,6 @@ Respond ONLY with valid JSON matching this schema:
               return parsed;
             }
           }
-        } else {
-          console.warn('xAI Grok API returned status:', response.status, await response.text());
         }
       } catch (err) {
         console.warn('xAI Grok API call failed:', err);
@@ -378,40 +385,10 @@ Respond ONLY with valid JSON matching this schema:
     }
   }
 
-  // 2. Try Groq API if separate GROQ_API_KEY is present
+  // 2. Try separate GROQ_API_KEY if present
   if (groqApiKey) {
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqApiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: `Problem Statement: "${options.ideaPrompt}"\nTeam Size: ${teamSize}` },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.2,
-        }),
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        const content = json?.choices?.[0]?.message?.content;
-        if (content) {
-          const parsed = cleanAndParseJson(content);
-          if (parsed.projectName && Array.isArray(parsed.teammates)) {
-            console.log('Successfully generated architecture via Groq (Llama 3.3)');
-            return parsed;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Groq API call failed:', err);
-    }
+    const groqResult = await callGroq(groqApiKey, systemInstruction, options.ideaPrompt, teamSize);
+    if (groqResult) return groqResult;
   }
 
   // 3. Try Google Gemini API if key is present
