@@ -170,9 +170,8 @@ function App() {
                 <span className="cursor-block" />
               </h1>
               <p className="hero-subtitle">
-                Paste your repo, describe your idea, and let AI divide work into
-                zero-conflict branches — so every teammate codes independently and
-                merges cleanly into <code>main</code>.
+                Turn a rough idea into a coordinated build plan. Branchout assigns ownership,
+                creates isolated branches, and shows what is ready to merge into <code>main</code>.
               </p>
 
               <div className="landing-actions-row">
@@ -181,14 +180,14 @@ function App() {
                   onClick={() => setView('form')}
                   id="start-btn"
                 >
-                  Create a project
+                  Start a project brief
                 </button>
                 <button
                   className="btn btn-secondary btn-cta"
                   onClick={() => handleViewDashboard(1)}
                   id="landing-dashboard-btn"
                 >
-                  📊 View Live Dashboard
+                  Open live dashboard
                 </button>
               </div>
             </div>
@@ -196,18 +195,21 @@ function App() {
             <div className="feature-cards">
               <div className="feature-card">
                 <div className="feature-icon">🔗</div>
-                <h3>Paste Repo</h3>
-                <p>Connect your newly created GitHub repository in a single step. Branchout auto-detects the project name.</p>
+                <span className="feature-kicker mono">01 / CONNECT</span>
+                <h3>Connect the repo</h3>
+                <p>Bring in the GitHub repository your team is already using. Branchout keeps the handoff centered on one source of truth.</p>
               </div>
               <div className="feature-card">
                 <div className="feature-icon">🤖</div>
-                <h3>AI Divides Work</h3>
-                <p>Describe your idea and AI splits it into non-overlapping tasks, owned paths, and dedicated branches.</p>
+                <span className="feature-kicker mono">02 / ASSIGN</span>
+                <h3>Assign without collisions</h3>
+                <p>Describe the idea and generate non-overlapping tasks, owned paths, and dedicated branches for every teammate.</p>
               </div>
               <div className="feature-card">
                 <div className="feature-icon">🚀</div>
-                <h3>Push & Merge</h3>
-                <p>Each teammate works on their branch, pushes changes, and opens a PR to merge into <code>main</code>.</p>
+                <span className="feature-kicker mono">03 / SHIP</span>
+                <h3>Ship with confidence</h3>
+                <p>Track branch activity, CI signals, and merge readiness before changes land in <code>main</code>.</p>
               </div>
             </div>
 
