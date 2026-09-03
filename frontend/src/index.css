@@ -77,16 +77,29 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--bg-root);
+  background-color: #030308;
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
+}
+
+.app-container {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 /* ---- Typography ---- */
@@ -139,9 +152,14 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-md) var(--space-xl);
-  border-bottom: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 15, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .nav-brand {

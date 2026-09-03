@@ -4,6 +4,7 @@ import ProjectForm from './components/ProjectForm'
 import ProjectCreated from './components/ProjectCreated'
 import TeammateOnboarding from './components/TeammateOnboarding'
 import ContributionDashboard from './components/ContributionDashboard'
+import DataPixelArc from './components/DataPixelArc'
 import './index.css'
 
 type HealthStatus = 'checking' | 'online' | 'offline'
@@ -109,8 +110,22 @@ function App() {
   }
 
   return (
-    <>
-      <nav className="nav" id="main-nav">
+    <div className="app-container">
+      <DataPixelArc
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          minWidth: 0,
+          minHeight: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <div className="app-content">
+        <nav className="nav" id="main-nav">
         <div className="nav-left">
           <div
             className="nav-brand"
@@ -244,7 +259,8 @@ function App() {
           />
         )}
       </main>
-    </>
+      </div>
+    </div>
   )
 }
 
