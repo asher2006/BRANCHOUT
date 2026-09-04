@@ -64,6 +64,8 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
   // GitHub Launch Options
   const [existingRepoUrl, setExistingRepoUrl] = useState('')
   const [newRepoName, setNewRepoName] = useState('')
+  const [githubPat, setGithubPat] = useState('')
+  const [demoMode, setDemoMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitProgress, setSubmitProgress] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -219,7 +221,8 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         body: JSON.stringify({
           repoName: !existingRepoUrl.trim() ? (newRepoName.trim() || projectName) : undefined,
           existingRepoUrl: existingRepoUrl.trim() || undefined,
-          isDemo: true,
+          pat: githubPat.trim() || undefined,
+          isDemo: demoMode,
         }),
       })
 
@@ -511,6 +514,25 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                   />
                 </div>
               )}
+              <div className="field" style={{ marginBottom: 'var(--space-sm)' }}>
+                <label htmlFor="github-pat" className="field-label">GitHub fine-grained token (optional)</label>
+                <input
+                  id="github-pat"
+                  type="password"
+                  autoComplete="off"
+                  className="input mono"
+                  placeholder="Required to create branches in a real repository"
+                  value={githubPat}
+                  onChange={(e) => setGithubPat(e.target.value)}
+                />
+                <span className="muted" style={{ fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                  Used only for this request and never saved. Leave blank to use demo mode.
+                </span>
+              </div>
+              <label className="field-label" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
+                Force demo mode (no repository changes)
+              </label>
             </div>
 
             {submitError && (

@@ -3,6 +3,9 @@ primary_region = 'iad'
 
 [build]
 
+[env]
+  DB_PATH = '/data/branchout.db'
+
 [http_service]
   internal_port = 3001
   force_https = true
@@ -20,3 +23,7 @@ primary_region = 'iad'
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '256mb'
+
+[[mounts]]
+  source = 'branchout_data'
+  destination = '/data'

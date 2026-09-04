@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getDb, saveDatabase } from "../db.js";
+import { validateProjectTeammates } from "../validation.js";
 
 const router = Router();
 
@@ -7,20 +8,21 @@ const router = Router();
 router.post("/", (req, res) => {
   const { name, description, tech_stack, shared_conventions, teammates } = req.body;
 
-  if (!name || !name.trim()) {
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 100) {
     res.status(400).json({ error: "Project name is required" });
     return;
   }
 
-  if (!teammates || !Array.isArray(teammates) || teammates.length === 0) {
-    res.status(400).json({ error: "At least one teammate is required" });
+  const validated = validateProjectTeammates(teammates);
+  if ("error" in validated) {
+    res.status(400).json({ error: validated.error });
     return;
   }
 
   const db = getDb();
 
   try {
-    const repoUrl = (req.body.github_repo_url || "").trim();
+    const repoUrl = typeof req.body.github_repo_url === "string" ? req.body.github_repo_url.trim() : "";
     // Insert project
     db.run(
       `INSERT INTO projects (name, description, tech_stack, shared_conventions, github_repo_url) VALUES (?, ?, ?, ?, ?)`,
@@ -32,31 +34,25 @@ router.post("/", (req, res) => {
     const projectId = result[0].values[0][0] as number;
 
     // Insert teammates
-    for (const mate of teammates) {
-      if (!mate.name?.trim() || !mate.github_username?.trim()) {
-        continue;
-      }
-
-      const ownedPathsJson = JSON.stringify(
-        (mate.owned_paths || []).filter((p: string) => p.trim())
-      );
+    for (const mate of validated.teammates) {
+      const ownedPathsJson = JSON.stringify(mate.ownedPaths);
 
       // Generate branch name: slugified task + github username
-      const taskSlug = (mate.task_description || "task")
+      const taskSlug = mate.taskDescription
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "")
         .slice(0, 30);
-      const branchName = `${taskSlug}-${mate.github_username.trim().toLowerCase()}`;
+      const branchName = `${taskSlug}-${mate.githubUsername}`;
 
       db.run(
         `INSERT INTO teammates (project_id, name, github_username, task_description, owned_paths, branch_name)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
           projectId,
-          mate.name.trim(),
-          mate.github_username.trim(),
-          mate.task_description || "",
+          mate.name,
+          mate.githubUsername,
+          mate.taskDescription,
           ownedPathsJson,
           branchName,
         ]

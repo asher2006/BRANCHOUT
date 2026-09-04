@@ -15,10 +15,30 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5174")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const requestCounts = new Map<string, { count: number; resetsAt: number }>();
+function apiRateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const key = req.ip || "unknown";
+  const now = Date.now();
+  const current = requestCounts.get(key);
+  const bucket = !current || current.resetsAt <= now ? { count: 0, resetsAt: now + 60_000 } : current;
+  bucket.count += 1;
+  requestCounts.set(key, bucket);
+  if (bucket.count > 120) {
+    res.status(429).json({ error: "Too many requests. Try again in a minute." });
+    return;
+  }
+  next();
+}
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: process.env.NODE_ENV === "production" ? allowedOrigins : true }));
+app.use(express.json({ limit: "1mb" }));
+app.use("/api", apiRateLimit);
 
 // API routes
 app.get("/api/health", (_req, res) => {

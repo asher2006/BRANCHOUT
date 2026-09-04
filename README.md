@@ -84,13 +84,13 @@ cd backend
 npm run dev
 ```
 
-**Frontend (Vite dev server on port 5173):**
+**Frontend (Vite dev server on port 5174):**
 ```bash
 cd frontend
 npm run dev
 ```
 
-Open your browser to [http://localhost:5173/](http://localhost:5173/).
+Open your browser to [http://localhost:5174/](http://localhost:5174/).
 
 ---
 
@@ -119,6 +119,8 @@ docker run -p 3001:3001 branchout
 ### Fly.io Deployment
 ```bash
 fly launch
+# Create this once before the first deploy; project data is stored here.
+fly volumes create branchout_data --region iad --size 1
 fly deploy
 ```
 

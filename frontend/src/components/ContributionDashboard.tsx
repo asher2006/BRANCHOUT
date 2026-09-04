@@ -44,8 +44,11 @@ export default function ContributionDashboard({
     setError(null)
 
     try {
-      const url = `/api/projects/${projectId}/activity?threshold=${staleThreshold}${userPat ? `&pat=${encodeURIComponent(userPat)}` : ''}`
-      const res = await fetch(url)
+      const res = await fetch(`/api/projects/${projectId}/activity/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threshold: staleThreshold, pat: userPat || undefined }),
+      })
       if (!res.ok) {
         throw new Error('Failed to load project activity')
       }

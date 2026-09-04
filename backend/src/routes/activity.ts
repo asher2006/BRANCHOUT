@@ -3,19 +3,20 @@ import { pollProjectActivity, simulateBranchCommit, toggleBoundaryViolation } fr
 import { sendWebhookNudge } from "../services/notifications.js";
 import { generateMarkdownSummary, generateCsvSummary } from "../services/summaryExporter.js";
 import { getDb } from "../db.js";
+import { safeThreshold } from "../validation.js";
 
 const router = Router();
 
 // GET /api/projects/:id/activity — Get activity report
 router.get("/:id/activity", async (req, res) => {
   const { id } = req.params;
-  const { pat, threshold } = req.query;
-  const staleThreshold = threshold ? parseFloat(threshold as string) : 3;
+  const { threshold } = req.query;
+  const staleThreshold = safeThreshold(threshold);
 
   try {
     const report = await pollProjectActivity(
       Number(id),
-      pat as string | undefined,
+      undefined,
       staleThreshold
     );
     res.json(report);
@@ -29,7 +30,7 @@ router.get("/:id/activity", async (req, res) => {
 router.post("/:id/activity/refresh", async (req, res) => {
   const { id } = req.params;
   const { pat, threshold } = req.body;
-  const staleThreshold = threshold ? parseFloat(threshold) : 3;
+  const staleThreshold = safeThreshold(threshold);
 
   try {
     const report = await pollProjectActivity(
@@ -82,7 +83,7 @@ router.post("/:id/activity/toggle-boundary", (req, res) => {
 router.post("/:id/notify-webhook", async (req, res) => {
   const { webhookUrl, projectName, staleBranches } = req.body;
 
-  if (!webhookUrl) {
+  if (typeof webhookUrl !== "string" || !webhookUrl) {
     res.status(400).json({ error: "webhookUrl is required" });
     return;
   }
@@ -95,7 +96,7 @@ router.post("/:id/notify-webhook", async (req, res) => {
   try {
     const result = await sendWebhookNudge({
       webhookUrl: webhookUrl.trim(),
-      projectName: projectName || "Hackathon Project",
+      projectName: typeof projectName === "string" ? projectName.slice(0, 100) : "Hackathon Project",
       staleBranches,
     });
     res.json(result);
@@ -108,14 +109,14 @@ router.post("/:id/notify-webhook", async (req, res) => {
 // GET /api/projects/:id/export/markdown — Export end-of-hackathon markdown summary
 router.get("/:id/export/markdown", async (req, res) => {
   const { id } = req.params;
-  const { pat, threshold } = req.query;
+  const { threshold } = req.query;
   const db = getDb();
 
   try {
     const report = await pollProjectActivity(
       Number(id),
-      pat as string | undefined,
-      threshold ? parseFloat(threshold as string) : 3
+      undefined,
+      safeThreshold(threshold)
     );
 
     const pResult = db.exec(`SELECT * FROM projects WHERE id = ?`, [id]);
@@ -137,13 +138,13 @@ router.get("/:id/export/markdown", async (req, res) => {
 // GET /api/projects/:id/export/csv — Export end-of-hackathon CSV
 router.get("/:id/export/csv", async (req, res) => {
   const { id } = req.params;
-  const { pat, threshold } = req.query;
+  const { threshold } = req.query;
 
   try {
     const report = await pollProjectActivity(
       Number(id),
-      pat as string | undefined,
-      threshold ? parseFloat(threshold as string) : 3
+      undefined,
+      safeThreshold(threshold)
     );
 
     const csv = generateCsvSummary(report);

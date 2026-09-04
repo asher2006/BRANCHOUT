@@ -2,6 +2,7 @@
 FROM node:22-slim AS build
 
 WORKDIR /app
+RUN mkdir -p /data
 
 # Copy root package files
 COPY package.json ./
@@ -42,6 +43,9 @@ RUN npm install --omit=dev
 
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV DB_PATH=/data/branchout.db
+
+VOLUME ["/data"]
 
 EXPOSE 3001
 

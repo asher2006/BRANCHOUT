@@ -14,11 +14,19 @@ export interface StaleNudgePayload {
  * Sends a formatted alert message to Slack or Discord webhook.
  */
 export async function sendWebhookNudge(payload: StaleNudgePayload): Promise<{ success: boolean; error?: string }> {
-  if (!payload.webhookUrl || !payload.webhookUrl.startsWith("http")) {
+  let webhook: URL;
+  try {
+    webhook = new URL(payload.webhookUrl);
+  } catch {
     return { success: false, error: "Invalid webhook URL" };
   }
 
-  const isDiscord = payload.webhookUrl.includes("discord.com");
+  const allowedHosts = new Set(["hooks.slack.com", "discord.com", "discordapp.com"]);
+  if (webhook.protocol !== "https:" || !allowedHosts.has(webhook.hostname)) {
+    return { success: false, error: "Only HTTPS Slack and Discord webhook URLs are allowed" };
+  }
+
+  const isDiscord = webhook.hostname === "discord.com" || webhook.hostname === "discordapp.com";
 
   let body: any;
 
@@ -71,7 +79,7 @@ export async function sendWebhookNudge(payload: StaleNudgePayload): Promise<{ su
   }
 
   try {
-    const res = await fetch(payload.webhookUrl, {
+    const res = await fetch(webhook, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
