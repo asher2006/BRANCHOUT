@@ -137,7 +137,7 @@ export interface Props {
     arc?: ArcGroup
 }
 
-function __OriginkitBase_DataPixelArc(props: Props) {
+function OriginkitBaseDataPixelArc(props: Props) {
     const {
         style,
         background = "#030308",
@@ -158,14 +158,7 @@ function __OriginkitBase_DataPixelArc(props: Props) {
     // pins a control forever.
     const arc_ = { ...ARC_DEFAULTS, ...(arc || {}) }
 
-    const canvasRef = useRef<HTMLCanvasElement>(null)
-    const sizeRef = useRef({ w: 0, h: 0 })
-    sizeRef.current = { w: num(width, 0), h: num(height, 0) }
-
-    // Every live input is read from a ref inside the loop. Putting any of them in
-    // the effect deps would rebuild the GL context on every colour tweak.
-    const vRef = useRef<Record<string, number | string>>({})
-    vRef.current = {
+    const buildV = () => ({
         bg: background,
         base: baseColor,
         accent: accentColor,
@@ -178,7 +171,16 @@ function __OriginkitBase_DataPixelArc(props: Props) {
         drop: clampN(num(arc_.drop, 90), 0, 300) / 100,
         thickness: clampN(num(arc_.thickness, 35), 2, 120) / 100,
         falloff: clampN(num(arc_.falloff, 250), 50, 600) / 100,
-    }
+    })
+
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const sizeRef = useRef({ w: num(width, 0), h: num(height, 0) })
+    const vRef = useRef<Record<string, number | string>>(buildV())
+
+    useEffect(() => {
+        sizeRef.current = { w: num(width, 0), h: num(height, 0) }
+        vRef.current = buildV()
+    })
 
     useEffect(() => {
         const canvas = canvasRef.current
@@ -329,5 +331,5 @@ const __originkitPresetProps = {
 };
 
 export default function DataPixelArc(props: Record<string, unknown>) {
-  return <__OriginkitBase_DataPixelArc {...(__originkitPresetProps as Record<string, unknown>)} {...props} />;
+  return <OriginkitBaseDataPixelArc {...(__originkitPresetProps as Record<string, unknown>)} {...props} />;
 }
