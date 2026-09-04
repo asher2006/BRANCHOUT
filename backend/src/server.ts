@@ -65,6 +65,12 @@ if (process.env.NODE_ENV === "production") {
   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(FRONTEND_DIST, "index.html"));
   });
+} else {
+  // In development, redirect browser visits from port 3001 to the Vite frontend
+  app.get("/", (_req, res) => {
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5174";
+    res.redirect(frontendUrl);
+  });
 }
 
 // Initialize database then start server
