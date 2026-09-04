@@ -31,6 +31,9 @@ export function validateProjectTeammates(value: unknown):
   const usernames = new Set<string>();
 
   for (const raw of value as ProjectTeammateInput[]) {
+    if (!raw || typeof raw !== "object") {
+      return { error: "Each teammate must be an object." };
+    }
     const name = typeof raw.name === "string" ? raw.name.trim() : "";
     const githubUsername = typeof raw.github_username === "string"
       ? raw.github_username.trim().replace(/^@/, "").toLowerCase()

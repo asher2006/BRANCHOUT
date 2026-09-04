@@ -29,6 +29,7 @@ RUN npm run build
 FROM node:22-slim
 
 WORKDIR /app
+RUN mkdir -p /data
 
 # Copy compiled backend
 COPY --from=build /app/backend/package.json ./backend/

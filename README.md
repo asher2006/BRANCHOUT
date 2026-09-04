@@ -69,12 +69,11 @@ In hackathons, work is often assigned informally in chat or whiteboards. Before 
 git clone https://github.com/your-username/branchout.git
 cd branchout
 
-# Install frontend dependencies
-cd frontend && npm install && cd ..
-
-# Install backend dependencies
-cd backend && npm install && cd ..
+# Install all pinned dependencies (Linux/macOS and CI)
+npm ci
 ```
+
+On Windows, if npm reports a workspace symlink permission error, enable Developer Mode or run the terminal with permission to create symbolic links, then run `npm.cmd ci`.
 
 ### 2. Start Development Servers
 
@@ -113,7 +112,7 @@ Open [http://localhost:3001/](http://localhost:3001/).
 ### Docker Deployment
 ```bash
 docker build -t branchout .
-docker run -p 3001:3001 branchout
+docker run -p 3001:3001 -v branchout-data:/data branchout
 ```
 
 ### Fly.io Deployment
@@ -150,7 +149,7 @@ fly deploy
 
 ## 🛡️ Security Architecture
 - **No Database Token Storage**: GitHub Personal Access Tokens are never written to disk or SQLite. They are used exclusively in volatile memory during the provisioning/refresh request.
-- **No Third-Party AI Data Leakage**: Brief parsing and prompt generation are 100% deterministic string templates — your project ideas are never sent to external LLMs.
+- **Configurable AI processing**: Without an AI API key, the built-in planner runs locally. When an AI API key is configured, the project brief is sent to that selected provider to generate the plan.
 
 ---
 
