@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { TeammateInput, ProjectInput, Project, ProvisionResult } from '../types'
+import { apiFetch } from '../utils/api'
 
 interface ProjectFormProps {
   onSuccess: (project: Project, provisionResult?: ProvisionResult) => void
@@ -151,7 +152,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
         ideaPrompt: promptToUse.trim(),
       }
 
-      const res = await fetch('/api/ai/decompose', {
+      const res = await apiFetch('/api/ai/decompose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

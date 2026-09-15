@@ -6,6 +6,7 @@ import TeammateOnboarding from './components/TeammateOnboarding'
 import ContributionDashboard from './components/ContributionDashboard'
 import DataPixelArc from './components/DataPixelArc'
 import { OrbitButtonEnhancer } from './components/OrbitButtonEnhancer'
+import { apiFetch } from './utils/api'
 import './index.css'
 
 type HealthStatus = 'checking' | 'online' | 'offline'
@@ -47,7 +48,7 @@ function App() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('/api/health')
+        const res = await apiFetch('/api/health')
         if (res.ok) {
           setHealth('online')
         } else {
