@@ -5,7 +5,6 @@ import ProjectCreated from './components/ProjectCreated'
 import TeammateOnboarding from './components/TeammateOnboarding'
 import ContributionDashboard from './components/ContributionDashboard'
 import DataPixelArc from './components/DataPixelArc'
-import { OrbitButtonEnhancer } from './components/OrbitButtonEnhancer'
 import RadialRevealButton from './components/RadialRevealButton'
 import { apiFetch } from './utils/api'
 import './index.css'
@@ -114,7 +113,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <OrbitButtonEnhancer />
       <DataPixelArc
         style={{
           position: 'fixed',
