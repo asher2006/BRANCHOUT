@@ -207,27 +207,6 @@ function App() {
               </div>
             </div>
 
-            <div className="feature-cards">
-              <div className="feature-card">
-                <div className="feature-icon">🔗</div>
-                <span className="feature-kicker mono">01 / CONNECT</span>
-                <h3>Connect the repo</h3>
-                <p>Bring in the GitHub repository your team is already using. Branchout keeps the handoff centered on one source of truth.</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">🤖</div>
-                <span className="feature-kicker mono">02 / ASSIGN</span>
-                <h3>Assign without collisions</h3>
-                <p>Describe the idea and generate non-overlapping tasks, owned paths, and dedicated branches for every teammate.</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">🚀</div>
-                <span className="feature-kicker mono">03 / SHIP</span>
-                <h3>Ship with confidence</h3>
-                <p>Track branch activity, CI signals, and merge readiness before changes land in <code>main</code>.</p>
-              </div>
-            </div>
-
             <div className="version mono">v1.0.0</div>
           </div>
         )}
