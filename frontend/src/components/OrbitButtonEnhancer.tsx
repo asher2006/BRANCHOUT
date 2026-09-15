@@ -12,7 +12,9 @@ export function OrbitButtonEnhancer() {
   useEffect(() => {
     const decorate = (root: ParentNode) => {
       root.querySelectorAll('button').forEach((button) => {
-        button.classList.add(ORBIT_CLASS)
+        if (!button.classList.contains('radial-reveal-button')) {
+          button.classList.add(ORBIT_CLASS)
+        }
       })
     }
 
@@ -22,7 +24,9 @@ export function OrbitButtonEnhancer() {
       records.forEach((record) => {
         record.addedNodes.forEach((node) => {
           if (!(node instanceof HTMLElement)) return
-          if (node.matches('button')) node.classList.add(ORBIT_CLASS)
+          if (node.matches('button') && !node.classList.contains('radial-reveal-button')) {
+            node.classList.add(ORBIT_CLASS)
+          }
           decorate(node)
         })
       })

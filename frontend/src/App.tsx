@@ -6,6 +6,7 @@ import TeammateOnboarding from './components/TeammateOnboarding'
 import ContributionDashboard from './components/ContributionDashboard'
 import DataPixelArc from './components/DataPixelArc'
 import { OrbitButtonEnhancer } from './components/OrbitButtonEnhancer'
+import RadialRevealButton from './components/RadialRevealButton'
 import { apiFetch } from './utils/api'
 import './index.css'
 
@@ -193,20 +194,20 @@ function App() {
               </p>
 
               <div className="landing-actions-row">
-                <button
+                <RadialRevealButton
                   className="btn btn-primary btn-cta"
                   onClick={() => setView('form')}
                   id="start-btn"
                 >
                   Start a project brief
-                </button>
-                <button
+                </RadialRevealButton>
+                <RadialRevealButton
                   className="btn btn-secondary btn-cta"
                   onClick={() => handleViewDashboard(1)}
                   id="landing-dashboard-btn"
                 >
                   Open live dashboard
-                </button>
+                </RadialRevealButton>
               </div>
             </div>
 

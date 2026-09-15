@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { TeammateInput, ProjectInput, Project, ProvisionResult } from '../types'
 import { apiFetch } from '../utils/api'
+import RadialRevealButton from './RadialRevealButton'
 
 interface ProjectFormProps {
   onSuccess: (project: Project, provisionResult?: ProvisionResult) => void
@@ -390,15 +391,14 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
           {/* Next Button */}
           <div className="wizard-nav">
             <div />
-            <button
-              type="button"
+            <RadialRevealButton
               className="btn btn-primary"
               onClick={handleNextToStep2}
               disabled={hasEmptyMembers || !teamName.trim()}
               id="btn-next-step2"
             >
               Next → Problem Statement
-            </button>
+            </RadialRevealButton>
           </div>
         </section>
       )}
@@ -455,8 +455,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
 
           {/* Navigation: Back & Divide */}
           <div className="wizard-nav">
-            <button
-              type="button"
+            <RadialRevealButton
               className="btn btn-secondary"
               onClick={() => {
                 setStep(1)
@@ -465,9 +464,8 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
               id="btn-back-step1"
             >
               ← Back
-            </button>
-            <button
-              type="button"
+            </RadialRevealButton>
+            <RadialRevealButton
               className="btn btn-primary"
               style={{ fontSize: '0.9375rem', padding: '10px 20px' }}
               onClick={() => handleDivideWork()}
@@ -484,7 +482,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
               ) : (
                 '✨ Divide & Allocate Work'
               )}
-            </button>
+            </RadialRevealButton>
           </div>
         </section>
       )}
@@ -619,8 +617,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
 
             {/* Navigation: Back & Launch */}
             <div className="wizard-nav" style={{ marginTop: 'var(--space-md)' }}>
-              <button
-                type="button"
+              <RadialRevealButton
                 className="btn btn-secondary"
                 onClick={() => {
                   setStep(2)
@@ -629,8 +626,8 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                 id="btn-back-step2"
               >
                 ← Back
-              </button>
-              <button
+              </RadialRevealButton>
+              <RadialRevealButton
                 type="submit"
                 className="btn btn-primary"
                 style={{ fontSize: '1rem', padding: '12px 24px' }}
@@ -638,7 +635,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                 id="submit-btn"
               >
                 {submitting ? 'Launching Team...' : '🚀 Launch Team & Cut Branches'}
-              </button>
+              </RadialRevealButton>
             </div>
           </section>
         </form>
