@@ -2669,6 +2669,12 @@ body::before {
 .form-header h1 { font-size: clamp(1.7rem, 3vw, 2.35rem); letter-spacing: -.045em; }
 .form-subtitle { max-width: 680px; font-size: .92rem; color: var(--text-secondary); line-height: 1.75; }
 .form-section, .created-section, .onboarding-card { border-radius: 14px; border-color: rgba(120,145,170,.2); box-shadow: var(--shadow-panel); }
+.wizard-progress,
+.form-section {
+  background: rgba(16, 20, 27, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
 .form-section { padding: clamp(18px, 3vw, 28px); }
 .section-title { font-size: 1rem; padding-bottom: 14px; }
 .section-icon { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: var(--accent-glow); }
