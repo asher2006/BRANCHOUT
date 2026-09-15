@@ -2738,8 +2738,9 @@ body::before {
 }
 
 .orbit-border-button.btn-primary {
-  --orbit-fill: var(--accent);
-  --orbit-stroke: #d1fff2;
+  --orbit-fill: rgba(16, 20, 27, 0.76);
+  --orbit-stroke: rgba(72, 224, 182, 0.95);
+  color: var(--text-primary);
 }
 
 .orbit-border-button.btn-secondary,
