@@ -39,6 +39,9 @@ const INSPIRATION_PRESETS = [
 ]
 
 export default function ProjectForm({ onSuccess }: ProjectFormProps) {
+  // Wizard step: 1 = Team Setup, 2 = Problem Statement, 3 = Divided Work & Launch
+  const [step, setStep] = useState(1)
+
   // Step 1: Team Setup
   const [teamName, setTeamName] = useState('HackSquad')
   const [teamSize, setTeamSize] = useState<number>(3)
@@ -112,6 +115,15 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
     )
   }
 
+  // Validate step 1 and move to step 2
+  const handleNextToStep2 = () => {
+    setMembersTouched(true)
+    if (hasEmptyMembers) return
+    if (!teamName.trim()) return
+    setStep(2)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // Divide the work via AI (Grok / Groq / Fallback)
   const handleDivideWork = async (promptOverride?: string) => {
     setMembersTouched(true)
@@ -166,11 +178,9 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       )
       setDivided(true)
 
-      // Smooth scroll to divided section
-      setTimeout(() => {
-        const el = document.getElementById('step-divided-work')
-        if (el) el.scrollIntoView({ behavior: 'smooth' })
-      }, 100)
+      // Auto-advance to step 3 after successful decomposition
+      setStep(3)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err: any) {
       setDecomposeError(err.message || 'An error occurred while dividing the work.')
     } finally {
@@ -241,190 +251,248 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
     }
   }
 
+  const STEP_LABELS = ['Team Setup', 'Problem Statement', 'Launch']
+
   return (
     <div className="project-form" id="simple-project-form">
-      {/* Page Header */}
-      <div className="form-header">
-        <div className="ai-modal-badge mono">🌿 BRANCHOUT</div>
-        <h1 style={{ marginTop: '4px' }}>Simple Team & Project Setup</h1>
-        <p className="form-subtitle">
-          Paste your GitHub repository, enter your team and idea. The AI divides the work so everyone works on their branch and pushes to <code>main</code>.
-        </p>
+      {/* ---- Step Progress Indicator ---- */}
+      <div className="wizard-progress" id="wizard-progress">
+        {STEP_LABELS.map((label, idx) => {
+          const stepNum = idx + 1
+          const isActive = step === stepNum
+          const isCompleted = step > stepNum
+          return (
+            <div
+              key={stepNum}
+              className={`wizard-step ${isActive ? 'wizard-step--active' : ''} ${isCompleted ? 'wizard-step--done' : ''}`}
+              onClick={() => {
+                // Allow clicking back to completed steps
+                if (isCompleted) {
+                  setStep(stepNum)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }
+              }}
+              role={isCompleted ? 'button' : undefined}
+              tabIndex={isCompleted ? 0 : undefined}
+              style={{ cursor: isCompleted ? 'pointer' : 'default' }}
+            >
+              <span className="wizard-step__number mono">
+                {isCompleted ? '✓' : `0${stepNum}`}
+              </span>
+              <span className="wizard-step__label">{label}</span>
+            </div>
+          )
+        })}
+        <div className="wizard-progress__track">
+          <div
+            className="wizard-progress__fill"
+            style={{ width: `${((step - 1) / (STEP_LABELS.length - 1)) * 100}%` }}
+          />
+        </div>
       </div>
 
       {/* ============================================================ */}
       {/* STEP 1: GITHUB REPOSITORY & TEAM SETUP                       */}
       {/* ============================================================ */}
-      <section className="form-section" id="step-team-setup">
-        <h2 className="section-title">
-          <span className="section-icon mono">01</span>
-          GitHub Repo & Team Setup
-        </h2>
+      {step === 1 && (
+        <section className="form-section wizard-page" id="step-team-setup">
+          <h2 className="section-title">
+            <span className="section-icon mono">01</span>
+            GitHub Repo & Team Setup
+          </h2>
 
-        {/* GitHub Repository Link */}
-        <div className="field" style={{ marginBottom: 'var(--space-md)' }}>
-          <label htmlFor="input-repo-link" className="field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>🔗 GitHub Repository URL</span>
-            <span className="mono muted" style={{ fontSize: '0.75rem' }}>Paste your newly created repo link</span>
-          </label>
-          <input
-            id="input-repo-link"
-            type="url"
-            className="input mono"
-            placeholder="e.g. https://github.com/your-username/your-hackathon-repo"
-            value={existingRepoUrl}
-            onChange={(e) => handleRepoUrlChange(e.target.value)}
-          />
-          <span className="muted" style={{ fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-            Each teammate works on their assigned branch and then pushes / merges back into <code>main</code>.
-          </span>
-        </div>
-
-        {/* Team Name & Size Row */}
-        <div className="field-row two-col">
-          <div className="field">
-            <label htmlFor="input-team-name" className="field-label">
-              Team / Project Name
+          {/* GitHub Repository Link */}
+          <div className="field" style={{ marginBottom: 'var(--space-md)' }}>
+            <label htmlFor="input-repo-link" className="field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>🔗 GitHub Repository URL</span>
+              <span className="mono muted" style={{ fontSize: '0.75rem' }}>Paste your newly created repo link</span>
             </label>
             <input
-              id="input-team-name"
-              type="text"
+              id="input-repo-link"
+              type="url"
               className="input mono"
-              placeholder="e.g. CloudNavigators"
-              value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
-              required
+              placeholder="e.g. https://github.com/your-username/your-hackathon-repo"
+              value={existingRepoUrl}
+              onChange={(e) => handleRepoUrlChange(e.target.value)}
             />
+            <span className="muted" style={{ fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+              Each teammate works on their assigned branch and then pushes / merges back into <code>main</code>.
+            </span>
           </div>
 
-          <div className="field">
-            <label htmlFor="select-team-size" className="field-label">
-              Team Size
-            </label>
-            <select
-              id="select-team-size"
-              className="input select-input mono"
-              value={teamSize}
-              onChange={(e) => handleTeamSizeChange(parseInt(e.target.value, 10))}
+          {/* Team Name & Size Row */}
+          <div className="field-row two-col">
+            <div className="field">
+              <label htmlFor="input-team-name" className="field-label">
+                Team / Project Name
+              </label>
+              <input
+                id="input-team-name"
+                type="text"
+                className="input mono"
+                placeholder="e.g. CloudNavigators"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="select-team-size" className="field-label">
+                Team Size
+              </label>
+              <select
+                id="select-team-size"
+                className="input select-input mono"
+                value={teamSize}
+                onChange={(e) => handleTeamSizeChange(parseInt(e.target.value, 10))}
+              >
+                <option value={2}>2 Teammates</option>
+                <option value={3}>3 Teammates</option>
+                <option value={4}>4 Teammates</option>
+                <option value={5}>5 Teammates</option>
+                <option value={6}>6 Teammates</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Member Names */}
+          <div style={{ marginTop: 'var(--space-sm)' }}>
+            <span className="field-label mono">TEAM MEMBERS:</span>
+            <div className="members-grid">
+              {members.slice(0, teamSize).map((member, idx) => (
+                <div key={idx} className="member-card-setup">
+                  <div className="member-card-header">
+                    <span className="member-number-badge">MEMBER {idx + 1}</span>
+                  </div>
+
+                  <div className="field">
+                    <input
+                      type="text"
+                      className={`input mono ${membersTouched && !member.name.trim() ? 'input-invalid' : ''}`}
+                      style={{ fontSize: '0.875rem', padding: '8px 12px' }}
+                      placeholder={`Name (e.g. Alice)`}
+                      value={member.name}
+                      onChange={(e) => handleMemberNameChange(idx, e.target.value)}
+                      onBlur={() => setMembersTouched(true)}
+                      required
+                    />
+                    {membersTouched && !member.name.trim() && (
+                      <span className="validation-error">⚠ Name is required</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Next Button */}
+          <div className="wizard-nav">
+            <div />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleNextToStep2}
+              disabled={hasEmptyMembers || !teamName.trim()}
+              id="btn-next-step2"
             >
-              <option value={2}>2 Teammates</option>
-              <option value={3}>3 Teammates</option>
-              <option value={4}>4 Teammates</option>
-              <option value={5}>5 Teammates</option>
-              <option value={6}>6 Teammates</option>
-            </select>
+              Next → Problem Statement
+            </button>
           </div>
-        </div>
-
-        {/* Member Names */}
-        <div style={{ marginTop: 'var(--space-sm)' }}>
-          <span className="field-label mono">TEAM MEMBERS:</span>
-          <div className="members-grid">
-            {members.slice(0, teamSize).map((member, idx) => (
-              <div key={idx} className="member-card-setup">
-                <div className="member-card-header">
-                  <span className="member-number-badge">MEMBER {idx + 1}</span>
-                </div>
-
-                <div className="field">
-                  <input
-                    type="text"
-                    className={`input mono ${membersTouched && !member.name.trim() ? 'input-invalid' : ''}`}
-                    style={{ fontSize: '0.875rem', padding: '8px 12px' }}
-                    placeholder={`Name (e.g. Alice)`}
-                    value={member.name}
-                    onChange={(e) => handleMemberNameChange(idx, e.target.value)}
-                    onBlur={() => setMembersTouched(true)}
-                    required
-                  />
-                  {membersTouched && !member.name.trim() && (
-                    <span className="validation-error">⚠ Name is required</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ============================================================ */}
       {/* STEP 2: PROBLEM STATEMENT & DIVIDE WORK                      */}
       {/* ============================================================ */}
-      <section className="form-section" id="step-problem-statement">
-        <h2 className="section-title">
-          <span className="section-icon mono">02</span>
-          Problem Statement
-        </h2>
+      {step === 2 && (
+        <section className="form-section wizard-page" id="step-problem-statement">
+          <h2 className="section-title">
+            <span className="section-icon mono">02</span>
+            Problem Statement
+          </h2>
 
-        <p className="section-description">
-          Describe what you want to build. You can also pick a preset idea below to start instantly.
-        </p>
+          <p className="section-description">
+            Describe what you want to build. You can also pick a preset idea below to start instantly.
+          </p>
 
-        {/* Quick Inspiration Presets */}
-        <div className="ai-preset-chips">
-          {INSPIRATION_PRESETS.map((preset, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className="ai-preset-chip"
-              onClick={() => {
-                setIdeaPrompt(preset.prompt)
-                setDecomposeError(null)
-                handleDivideWork(preset.prompt)
-              }}
-            >
-              {preset.title}
-            </button>
-          ))}
-        </div>
-
-        {/* Textarea */}
-        <div className="field" style={{ marginTop: 'var(--space-sm)' }}>
-          <textarea
-            id="idea-prompt-input"
-            className="input textarea mono"
-            rows={3}
-            placeholder="e.g. An automated drone delivery platform that schedules flights and runs collision avoidance..."
-            value={ideaPrompt}
-            onChange={(e) => setIdeaPrompt(e.target.value)}
-          />
-        </div>
-
-        {decomposeError && (
-          <div className="error-banner" style={{ marginTop: 'var(--space-xs)' }}>
-            {decomposeError}
+          {/* Quick Inspiration Presets */}
+          <div className="ai-preset-chips">
+            {INSPIRATION_PRESETS.map((preset, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="ai-preset-chip"
+                onClick={() => {
+                  setIdeaPrompt(preset.prompt)
+                  setDecomposeError(null)
+                  handleDivideWork(preset.prompt)
+                }}
+              >
+                {preset.title}
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* Main Action Button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-sm)' }}>
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={{ fontSize: '0.9375rem', padding: '10px 20px' }}
-            onClick={() => handleDivideWork()}
-            disabled={decomposing || !ideaPrompt.trim() || hasEmptyMembers}
-            id="btn-divide-work"
-          >
-            {decomposing ? (
-              <>
-                <span className="spinner" style={{ width: 14, height: 14, marginRight: '8px' }} />
-                <span>Dividing Work & Allocating Paths...</span>
-              </>
-            ) : divided ? (
-              '🔄 Re-Divide Work'
-            ) : (
-              '✨ Divide & Allocate Work'
-            )}
-          </button>
-        </div>
-      </section>
+          {/* Textarea */}
+          <div className="field" style={{ marginTop: 'var(--space-sm)' }}>
+            <textarea
+              id="idea-prompt-input"
+              className="input textarea mono"
+              rows={3}
+              placeholder="e.g. An automated drone delivery platform that schedules flights and runs collision avoidance..."
+              value={ideaPrompt}
+              onChange={(e) => setIdeaPrompt(e.target.value)}
+            />
+          </div>
+
+          {decomposeError && (
+            <div className="error-banner" style={{ marginTop: 'var(--space-xs)' }}>
+              {decomposeError}
+            </div>
+          )}
+
+          {/* Navigation: Back & Divide */}
+          <div className="wizard-nav">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setStep(1)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              id="btn-back-step1"
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ fontSize: '0.9375rem', padding: '10px 20px' }}
+              onClick={() => handleDivideWork()}
+              disabled={decomposing || !ideaPrompt.trim() || hasEmptyMembers}
+              id="btn-divide-work"
+            >
+              {decomposing ? (
+                <>
+                  <span className="spinner" style={{ width: 14, height: 14, marginRight: '8px' }} />
+                  <span>Dividing Work & Allocating Paths...</span>
+                </>
+              ) : divided ? (
+                '🔄 Re-Divide Work'
+              ) : (
+                '✨ Divide & Allocate Work'
+              )}
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* ============================================================ */}
       {/* STEP 3: DIVIDED WORK & LAUNCH                                */}
       {/* ============================================================ */}
-      {divided && (
-        <form onSubmit={handleLaunch} id="step-divided-work">
+      {step === 3 && divided && (
+        <form onSubmit={handleLaunch} id="step-divided-work" className="wizard-page">
           <section className="form-section">
             <div className="section-title-row">
               <h2 className="section-title">
@@ -548,8 +616,19 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
               </div>
             )}
 
-            {/* Launch Button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'var(--space-md)' }}>
+            {/* Navigation: Back & Launch */}
+            <div className="wizard-nav" style={{ marginTop: 'var(--space-md)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setStep(2)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                id="btn-back-step2"
+              >
+                ← Back
+              </button>
               <button
                 type="submit"
                 className="btn btn-primary"
