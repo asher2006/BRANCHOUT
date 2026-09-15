@@ -58,7 +58,7 @@ void main(){
 
       float core = i * i * i;
       float mid = pow(i, 1.5);
-      vec3 ink = uBase * i * 0.35 + uAccent * mid * 0.95 + uHigh * core * 0.35;
+      vec3 ink = uBase * i * 0.20 + uAccent * mid * 0.55 + uHigh * core * 0.20;
       col = mix(uBg, clamp(ink, 0.0, 1.0), cov * i);
     }
   }
@@ -141,9 +141,9 @@ function OriginkitBaseDataPixelArc(props: Props) {
     const {
         style,
         background = "#030308",
-        baseColor = "#1E6438",
-        accentColor = "#22DC50",
-        highlight = "#EAFFF0",
+        baseColor = "#164A2A",
+        accentColor = "#1AAD3E",
+        highlight = "#C8F0D0",
         density = 161,
         dotSize = 100,
         speed = 100,
