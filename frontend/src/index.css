@@ -828,7 +828,9 @@ a:hover {
   padding: var(--space-lg);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  background: var(--bg-surface);
+  background: rgba(16, 20, 27, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .branches-list {
@@ -840,7 +842,9 @@ a:hover {
 .branch-card {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  background: var(--bg-root);
+  background: rgba(7, 12, 18, 0.68);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   overflow: hidden;
 }
 
@@ -849,7 +853,7 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   padding: var(--space-sm) var(--space-md);
-  background: var(--bg-surface-raised);
+  background: rgba(24, 31, 42, 0.62);
   border-bottom: 1px solid var(--border-subtle);
 }
 
