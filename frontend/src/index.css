@@ -915,6 +915,104 @@ a:hover {
   line-height: 1.5;
 }
 
+.branch-task-summary .detail-value {
+  display: grid;
+  gap: 3px;
+}
+
+.branch-task-summary strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.task-summary-hint {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.branch-primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-left: calc(80px + var(--space-md));
+  padding-top: var(--space-xs);
+}
+
+.branch-more-details {
+  margin-left: calc(80px + var(--space-md));
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-sm);
+}
+
+.branch-more-details summary {
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  list-style: none;
+}
+
+.branch-more-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.branch-more-details summary::before {
+  content: '+ ';
+  color: var(--accent);
+}
+
+.branch-more-details[open] summary::before {
+  content: '− ';
+}
+
+.branch-more-content {
+  display: grid;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(6, 11, 16, 0.38);
+}
+
+.task-brief {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.task-brief-section h3 {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.task-brief-section p {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+/* The concise actions above cover these two actions; retain only developer
+   tools in the disclosure to avoid repeated controls. */
+.branch-more-content button[id^="copy-prompt-"],
+.branch-more-content button[id^="view-onboarding-"] {
+  display: none;
+}
+
+.branch-more-content .branch-actions-row {
+  gap: 0;
+}
+
+.branch-more-content .branch-actions-row .detail-label {
+  display: none;
+}
+
+.branch-more-content .teammate-action-buttons {
+  width: 100%;
+}
+
 .created-hint {
   text-align: center;
   font-size: 0.8125rem;

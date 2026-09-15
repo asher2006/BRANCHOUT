@@ -10,6 +10,22 @@ interface ProjectCreatedProps {
   onViewDashboard?: (projectId: number) => void
 }
 
+function getTaskSummary(description: string): string {
+  const objective = description.match(/###\s*Objective\s*([\s\S]*?)(?=###|$)/i)?.[1] || description
+  return objective.replace(/[#*_`]/g, '').replace(/\s+/g, ' ').trim()
+}
+
+function getBriefSections(description: string): Array<{ heading: string; body: string }> {
+  return description.trim().split(/(?=###\s+)/).map((section, index) => {
+    const cleaned = section.replace(/^###\s*/, '').trim()
+    const [heading, ...body] = cleaned.split(/\r?\n/)
+    return {
+      heading: heading?.trim() || `Detail ${index + 1}`,
+      body: body.join(' ').replace(/\s+/g, ' ').trim(),
+    }
+  })
+}
+
 export default function ProjectCreated({
   project,
   provisionResult,
@@ -139,9 +155,12 @@ export default function ProjectCreated({
                   </div>
 
                   {mate.task_description && (
-                    <div className="branch-detail">
-                      <span className="detail-label">Task</span>
-                      <span className="detail-value">{mate.task_description}</span>
+                    <div className="branch-detail branch-task-summary">
+                      <span className="detail-label">Focus</span>
+                      <div className="detail-value">
+                        <strong>{getTaskSummary(mate.task_description)}</strong>
+                        <span className="task-summary-hint">The complete brief is available below when needed.</span>
+                      </div>
                     </div>
                   )}
 
@@ -156,6 +175,40 @@ export default function ProjectCreated({
                     </div>
                   )}
 
+                  <div className="branch-primary-actions">
+                    {onSelectTeammate && (
+                      <button
+                        type="button"
+                        className="btn btn-small btn-primary"
+                        onClick={() => onSelectTeammate(mate.id)}
+                        id={`view-onboarding-primary-${mate.id}`}
+                      >
+                        Open teammate briefing
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-small btn-secondary"
+                      onClick={() => handleCopyPrompt(mate)}
+                      id={`copy-prompt-primary-${mate.id}`}
+                    >
+                      {copiedText === `prompt-${mate.id}` ? 'Prompt copied' : 'Copy master prompt'}
+                    </button>
+                  </div>
+
+                  <details className="branch-more-details">
+                    <summary>Task details & developer tools</summary>
+                    <div className="branch-more-content">
+                      {mate.task_description && (
+                        <div className="task-brief">
+                          {getBriefSections(mate.task_description).map((section) => (
+                            <section key={section.heading} className="task-brief-section">
+                              <h3>{section.heading}</h3>
+                              <p>{section.body}</p>
+                            </section>
+                          ))}
+                        </div>
+                      )}
                   <div className="branch-detail branch-actions-row">
                     <span className="detail-label">Quick Actions</span>
                     <div className="teammate-action-buttons">
@@ -202,6 +255,8 @@ export default function ProjectCreated({
                       </button>
                     </div>
                   </div>
+                    </div>
+                  </details>
                 </div>
               </div>
             )
