@@ -22,6 +22,20 @@ export interface PromptContext {
   }>;
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function taskCommitLabel(taskDescription: string): string {
+  const label = taskDescription
+    .split(/\r?\n/, 1)[0]
+    .replace(/^#+\s*/, '')
+    .replace(/[^a-zA-Z0-9:_ -]/g, '')
+    .trim()
+    .slice(0, 50);
+  return label || 'assigned feature';
+}
+
 /**
  * Generates a structured master prompt for a specific teammate
  * to paste directly into their coding agent (Claude Code, Cursor, etc.).
@@ -51,12 +65,21 @@ export function generateMasterPrompt(ctx: PromptContext): string {
   }
 
   // Teammate's Assigned Task
-  sections.push(`\n## 2. Your Assigned Task & Goal`);
+  sections.push(`\n## 2. Your Assigned Task & Complete Implementation Plan`);
+  sections.push(`This prompt covers **only ${teammate.name}'s assigned task**. Complete the plan below in order. Do not combine it with another teammate's task, take over their implementation, or edit files outside your declared ownership.`);
   if (teammate.task_description?.trim()) {
-    sections.push(`**Task Objective:**\n${teammate.task_description.trim()}`);
+    sections.push(`**Task Objective and Required Work:**\n${teammate.task_description.trim()}`);
   } else {
-    sections.push(`**Task Objective:** Implement your assigned feature module for the hackathon MVP.`);
+    sections.push(`**Task Objective:** Implement your assigned feature module for the hackathon MVP. First inspect the repository, then define the smallest interface needed for integration, implement the feature, cover error and empty states, add focused tests, and verify the final diff.`);
   }
+
+  sections.push(`\n### Required execution checklist`);
+  sections.push(`1. Read the repository README and \`SHARED_CONVENTIONS.md\`; inspect existing code before creating files.`);
+  sections.push(`2. Map every planned change to one of your owned paths. If a required change is outside those paths, stop and report the exact dependency instead of editing it.`);
+  sections.push(`3. Implement only this task, including validation, loading/empty/error behavior, and the integration contract relevant to the feature. Do not implement, copy, or merge another teammate's task.`);
+  sections.push(`4. Add or update focused tests inside your owned paths and run the repository's relevant formatter, linter, type-checker, and test commands.`);
+  sections.push(`5. Run \`git diff --check\`, inspect \`git status --short\`, and confirm every changed file is within your owned paths before committing.`);
+  sections.push(`6. Prepare a handoff with changed files, verification commands, integration notes, and any known limitations.`);
 
   // Git Branch & Workspace Boundaries
   sections.push(`\n## 3. Git Branch & Ownership Boundaries`);
@@ -105,21 +128,23 @@ export function generateMasterPrompt(ctx: PromptContext): string {
   } else {
     sections.push(`   \`\`\`bash\ngit checkout -b ${teammate.branch_name}\n\`\`\``);
   }
-  sections.push(`2. **Build Within Your Boundaries:** Work strictly inside your assigned paths. Automated CI (\`boundary-check\`) will fail and block your PR if files outside your owned paths are changed.`);
-  sections.push(`3. **Push Changes to Your Branch:**`);
+  sections.push(`2. **Build Within Your Boundaries:** Work strictly inside your assigned paths. Automated CI (\`boundary-check\`) will fail and block your PR if files outside your owned paths are changed. Do not modify or merge another teammate's task.`);
+  sections.push(`3. **Verify Before Committing:** Check the diff and confirm no out-of-scope files were changed.`);
+  sections.push(`4. **Push Changes to Your Branch:**`);
   sections.push(`   \`\`\`bash`);
-  sections.push(`   git add .`);
-  sections.push(`   git commit -m "feat: complete ${teammate.task_description ? teammate.task_description.slice(0, 40).trim() : 'feature'}"`);
+  const ownedPathArgs = teammate.owned_paths.length > 0
+    ? teammate.owned_paths.map(shellQuote).join(' ')
+    : '';
+  sections.push(`   git add -- ${ownedPathArgs || '<your-owned-path>'}`);
+  sections.push(`   git commit -m "feat: complete ${taskCommitLabel(teammate.task_description || '')}"`);
   sections.push(`   git push -u origin ${teammate.branch_name}`);
   sections.push(`   \`\`\``);
-  sections.push(`4. **Push / Merge into main Branch:**`);
+  sections.push(`5. **Open a Pull Request:**`);
   if (githubRepoUrl?.trim()) {
     sections.push(`   - Open Pull Request: ${githubRepoUrl.trim().replace(/\.git$/, '')}/compare/main...${teammate.branch_name}?expand=1`);
   }
-  sections.push(`   - Or merge directly into \`main\` when ready:`);
-  sections.push(`     \`\`\`bash`);
-  sections.push(`     git checkout main && git pull origin main && git merge ${teammate.branch_name} && git push origin main`);
-  sections.push(`     \`\`\``);
+  sections.push(`   - Include the handoff summary and verification results. A maintainer merges the PR after the boundary check and review pass.`);
+  sections.push(`   - Do not merge another teammate's branch into yours or push directly to \`main\`.`);
 
   return sections.join('\n');
 }

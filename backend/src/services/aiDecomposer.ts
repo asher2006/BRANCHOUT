@@ -22,6 +22,53 @@ export interface DecomposeOptions {
 }
 
 /**
+ * Keeps the offline path useful too: a teammate receives an executable brief,
+ * not only a role label. The same shape is requested from external models.
+ */
+function buildTaskBrief(title: string, area: string, ownedPaths: string[]): string {
+  const paths = ownedPaths.map((path) => `\`${path}\``).join(', ');
+
+  return `### Objective
+  Deliver the assigned ${title.toLowerCase()} for the ${area} hackathon MVP.
+
+### Required implementation steps
+1. Read the repository README and SHARED_CONVENTIONS.md, inspect the existing code, and identify the smallest integration surface for this feature.
+2. Create or update the implementation only inside these owned paths: ${paths}.
+3. Implement the complete feature, including its normal flow, validation, loading/empty states, and failure handling where applicable.
+4. Keep the public interface easy for the rest of the team to consume. Document expected inputs, outputs, events, or API contracts in your owned code when integration details are not obvious.
+5. Add focused tests for the important success and failure cases, following the repository's existing test conventions.
+6. Run the relevant formatter, linter, type-checker, and tests; fix failures caused by your changes.
+7. Review the final diff and prepare a short handoff describing what changed, how to use it, and any integration assumption.
+
+### Acceptance criteria
+- The feature works end to end within its declared scope and is usable by the MVP.
+- Invalid, empty, loading, and error cases are handled where the feature can encounter them.
+- Tests cover the core behavior and pass locally.
+- No files outside the owned paths are changed.
+
+### Out of scope
+- Do not implement, copy, or merge another teammate's task.
+- Do not edit another teammate's owned paths or shared project files to make integration easier; record the required contract and notify the coordinator instead.`;
+}
+
+function ensureCompleteTaskBrief(taskDescription: unknown, ownedPaths: unknown, fallbackTitle = 'assigned feature'): string {
+  const title = typeof taskDescription === 'string' && taskDescription.trim()
+    ? taskDescription.trim()
+    : fallbackTitle;
+  const paths = Array.isArray(ownedPaths)
+    ? ownedPaths.filter((path): path is string => typeof path === 'string' && path.trim().length > 0)
+    : [];
+
+  // Preserve a tailored model response, but repair short responses so every
+  // provider (and older saved project) still produces a complete prompt.
+  if (title.length >= 220 && /implementation steps|acceptance criteria|out of scope/i.test(title)) {
+    return title;
+  }
+
+  return buildTaskBrief(title, 'project', paths);
+}
+
+/**
  * Intelligent Semantic Architecture Engine
  * Analyzes problem keywords and synthesizes a non-overlapping, conflict-free architecture
  * used directly or as a high-reliability fallback when external LLM APIs are unreachable.
@@ -132,7 +179,7 @@ function heuristicDecompose(options: DecomposeOptions): ProjectDecomposition {
       allocations.push({
         name,
         githubUsername: gh,
-        taskDescription: role.title,
+        taskDescription: buildTaskBrief(role.title, domain, role.paths),
         ownedPaths: role.paths,
         branchName: `${role.slug}-${gh}`,
       });
@@ -178,7 +225,7 @@ function heuristicDecompose(options: DecomposeOptions): ProjectDecomposition {
       allocations.push({
         name,
         githubUsername: gh,
-        taskDescription: role.title,
+        taskDescription: buildTaskBrief(role.title, domain, role.paths),
         ownedPaths: role.paths,
         branchName: `${role.slug}-${gh}`,
       });
@@ -225,7 +272,7 @@ function heuristicDecompose(options: DecomposeOptions): ProjectDecomposition {
       allocations.push({
         name,
         githubUsername: gh,
-        taskDescription: role.title,
+        taskDescription: buildTaskBrief(role.title, domain, role.paths),
         ownedPaths: role.paths,
         branchName: `${role.slug}-${gh}`,
       });
@@ -304,6 +351,11 @@ async function callGroq(apiKey: string, systemInstruction: string, prompt: strin
 }
 
 function applyUserOverrides(result: ProjectDecomposition, options: DecomposeOptions): ProjectDecomposition {
+  result.teammates = (Array.isArray(result.teammates) ? result.teammates : []).map((tm) => ({
+    ...tm,
+    taskDescription: ensureCompleteTaskBrief(tm.taskDescription, tm.ownedPaths, tm.name || 'assigned feature'),
+  }));
+
   if (options.teamName && options.teamName.trim()) {
     result.projectName = options.teamName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   }
@@ -347,10 +399,19 @@ CRITICAL RULES:
 5. "teammates": An array of EXACTLY ${teamSize} teammates with:
    - "name": Teammate name.
    - "githubUsername": Realistic GitHub handle (e.g. alice-dev).
-   - "taskDescription": Clear, focused feature or component to build.
+   - "taskDescription": A standalone implementation brief, not a short title. It MUST contain: a one-sentence objective; 5-8 numbered, concrete implementation steps; relevant inputs/outputs, UI/API/data contracts, or integration assumptions; 3-6 acceptance criteria; tests to write/run; and an explicit out-of-scope list. Tailor every detail to this project and the assigned feature. The person must be able to complete the task from this field without asking what to do next.
    - "ownedPaths": Array of 1-3 directory paths (e.g. ["src/frontend/canvas/"]).
      IMPORTANT: Paths MUST BE COMPLETELY NON-OVERLAPPING across teammates. Never assign a parent path to one person and child path to another!
    - "branchName": Slug format "<task-slug>-<github_username>".
+6. Every teammate must have one distinct feature. Tasks must not merge or duplicate each other. If a feature needs another teammate's output, describe the exact interface and integration assumption, but do not assign or implement that other feature twice.
+7. Keep each task fully inside its owned paths. Do not rely on editing shared files or another teammate's paths; mention any coordinator-owned integration step as an explicit dependency.
+
+QUALITY BAR FOR taskDescription:
+- Write instructions for the assigned person, using direct action verbs.
+- Include normal, empty/loading, validation, and error behavior where relevant.
+- Include a concrete definition of done and a focused verification plan.
+- When the problem statement omits a detail, make a reasonable MVP assumption and state it in the task's integration assumptions instead of leaving a gap.
+- Do not return vague labels such as "build the dashboard" or "handle the backend".
 
 Respond ONLY with valid JSON matching this schema:
 {
