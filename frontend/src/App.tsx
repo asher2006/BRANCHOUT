@@ -163,7 +163,7 @@ function App() {
               }}
               id="nav-dashboard-link"
             >
-              📊 Live Dashboard
+              Live Dashboard
             </button>
           </div>
         </div>

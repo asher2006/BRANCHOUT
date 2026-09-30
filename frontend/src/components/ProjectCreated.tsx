@@ -93,10 +93,10 @@ export default function ProjectCreated({
           <div className="committed-files-row">
             <span className="detail-label">Committed to main:</span>
             <div className="file-badges">
-              <span className="file-badge mono">📄 SHARED_CONVENTIONS.md</span>
-              <span className="file-badge mono">📄 README.md</span>
-              <span className="file-badge mono">🛡️ .branchout/ownership.json</span>
-              <span className="file-badge mono">⚙️ .github/workflows/boundary-check.yml</span>
+              <span className="file-badge mono">SHARED_CONVENTIONS.md</span>
+              <span className="file-badge mono">README.md</span>
+              <span className="file-badge mono">.branchout/ownership.json</span>
+              <span className="file-badge mono">.github/workflows/boundary-check.yml</span>
             </div>
           </div>
         </section>
@@ -106,7 +106,7 @@ export default function ProjectCreated({
       <section className="created-section" id="branches-section">
         <div className="branches-section-header">
           <h2 className="section-title" style={{ border: 'none', padding: 0 }}>
-            <span className="section-icon mono">🌿</span>
+            <span className="section-icon mono">//</span>
             Teammate Onboarding & Master Prompts ({project.teammates.length})
           </h2>
           <span className="section-description">
@@ -218,7 +218,7 @@ export default function ProjectCreated({
                         onClick={() => handleCopyPrompt(mate)}
                         id={`copy-prompt-${mate.id}`}
                       >
-                        {copiedText === `prompt-${mate.id}` ? '✓ Copied Prompt!' : '📋 Copy Master Prompt'}
+                        {copiedText === `prompt-${mate.id}` ? '✓ Copied Prompt!' : 'Copy Master Prompt'}
                       </button>
 
                       {onSelectTeammate && (
@@ -228,7 +228,7 @@ export default function ProjectCreated({
                           onClick={() => onSelectTeammate(mate.id)}
                           id={`view-onboarding-${mate.id}`}
                         >
-                          👤 View Onboarding Page →
+                          View Onboarding Page →
                         </button>
                       )}
 
@@ -241,7 +241,7 @@ export default function ProjectCreated({
                           style={{ color: 'var(--accent)', borderColor: 'rgba(92, 225, 230, 0.4)' }}
                           title="Open Pull Request to merge this branch into main"
                         >
-                          🚀 Open PR to main ↗
+                          Open PR to main ↗
                         </a>
                       )}
 
@@ -251,7 +251,7 @@ export default function ProjectCreated({
                         onClick={() => handleCopy(cloneCmd, `cmd-${mate.id}`)}
                         title="Copy git checkout command"
                       >
-                        {copiedText === `cmd-${mate.id}` ? '✓ Copied Git Cmd' : '🌿 Copy Git Cmd'}
+                        {copiedText === `cmd-${mate.id}` ? '✓ Copied Git Cmd' : 'Copy Git Cmd'}
                       </button>
                     </div>
                   </div>
@@ -298,7 +298,7 @@ export default function ProjectCreated({
             onClick={() => onViewDashboard(project.id)}
             id="open-dashboard-btn"
           >
-            📊 Open Live Contribution Dashboard →
+            Open Live Contribution Dashboard →
           </button>
         )}
         <button

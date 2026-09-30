@@ -23,19 +23,19 @@ const DEFAULT_MEMBERS: MemberState[] = [
 
 const INSPIRATION_PRESETS = [
   {
-    title: '🎨 Real-Time Whiteboard',
+    title: 'Real-Time Whiteboard',
     prompt: 'A real-time collaborative whiteboard app with live cursor tracking, voice channels, and interactive canvas drawing for hackathon teams.',
   },
   {
-    title: '🤖 DevOps Incident AI',
+    title: 'DevOps Incident AI',
     prompt: 'An AI-powered DevOps agent that monitors cloud alerts, inspects container logs, diagnoses root causes, and suggests incident remediation scripts.',
   },
   {
-    title: '🏃 Health & Habit Tracker',
+    title: 'Health & Habit Tracker',
     prompt: 'A wellness and habit tracker that logs daily routines, provides AI coaching insights, and gamifies team fitness challenges.',
   },
   {
-    title: '🛡️ Web3 Smart Contract Auditor',
+    title: 'Web3 Smart Contract Auditor',
     prompt: 'A static analysis security tool that scans Solidity smart contracts for reentrancy and access-control vulnerabilities with interactive remediation diffs.',
   },
 ]
@@ -306,7 +306,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
           {/* GitHub Repository Link */}
           <div className="field" style={{ marginBottom: 'var(--space-md)' }}>
             <label htmlFor="input-repo-link" className="field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>🔗 GitHub Repository URL</span>
+              <span>GitHub Repository URL</span>
               <span className="mono muted" style={{ fontSize: '0.75rem' }}>Paste your newly created repo link</span>
             </label>
             <input
@@ -478,9 +478,9 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                   <span>Dividing Work & Allocating Paths...</span>
                 </>
               ) : divided ? (
-                '🔄 Re-Divide Work'
+                'Re-Divide Work'
               ) : (
-                '✨ Divide & Allocate Work'
+                'Divide & Allocate Work'
               )}
             </RadialRevealButton>
           </div>
@@ -554,7 +554,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
             {/* ── Slim GitHub Provisioning ── */}
             <details className="provision-toggle" open={!existingRepoUrl}>
               <summary className="provision-toggle__summary mono">
-                <span>⚙ GitHub provisioning</span>
+                <span>GitHub provisioning</span>
                 <span className="muted" style={{ fontSize: '0.7rem' }}>{existingRepoUrl ? 'repo linked' : 'configure'}</span>
               </summary>
               <div className="provision-toggle__body">
@@ -622,7 +622,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                 disabled={submitting}
                 id="submit-btn"
               >
-                {submitting ? 'Launching…' : '🚀 Launch & Cut Branches'}
+                {submitting ? 'Launching…' : 'Launch & Cut Branches'}
               </RadialRevealButton>
             </div>
           </section>

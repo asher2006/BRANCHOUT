@@ -169,7 +169,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
       {/* ---- Assigned Branch Card ---- */}
       <section className="form-section onboarding-card" id="branch-setup-card">
         <h2 className="section-title">
-          <span className="section-icon mono">🌿</span>
+          <span className="section-icon mono">//</span>
           Assigned Git Branch & Cloud Lifecycle
         </h2>
         <div className="branch-card-details">
@@ -239,7 +239,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
                   className="btn btn-small btn-primary"
                   style={{ textDecoration: 'none' }}
                 >
-                  🚀 Open Pull Request into main ↗
+                  Open Pull Request into main ↗
                 </a>
               )}
             </div>
@@ -289,7 +289,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
         <div className="prompt-section-header">
           <div>
             <h2 className="section-title" style={{ border: 'none', paddingBottom: '2px' }}>
-              <span className="section-icon mono">🤖</span>
+              <span className="section-icon mono">>_</span>
               Your Ready-to-Paste Master Prompt
             </h2>
             <p className="section-description">
@@ -304,7 +304,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
               onClick={handleCopyPrompt}
               id="copy-prompt-btn"
             >
-              {copiedPrompt ? '✓ Copied to Clipboard!' : '📋 Copy Master Prompt'}
+              {copiedPrompt ? '✓ Copied to Clipboard!' : 'Copy Master Prompt'}
             </button>
             <button
               type="button"
