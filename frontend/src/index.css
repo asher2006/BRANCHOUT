@@ -2404,6 +2404,179 @@ a:hover {
   line-height: 1.4;
 }
 
+/* ── Launch Step 3 – Compact Header ── */
+.launch-header {
+  margin-bottom: var(--space-md);
+}
+
+.launch-header__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.launch-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  margin-top: 6px;
+}
+
+/* ── Launch Step 3 – Compact Teammate Rows ── */
+.divided-work-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-md);
+}
+
+.divided-row {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-root);
+  transition: border-color var(--transition-fast);
+}
+
+.divided-row[open] {
+  border-color: rgba(92, 225, 230, 0.35);
+}
+
+.divided-row__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.divided-row__summary::-webkit-details-marker {
+  display: none;
+}
+
+.divided-row__summary::marker {
+  content: '';
+}
+
+.divided-row__left {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.divided-row__name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.divided-row__task {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.divided-row__badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.path-count-badge {
+  font-size: 0.6875rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(92, 225, 230, 0.1);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.branch-badge {
+  font-size: 0.6875rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.divided-row__detail {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 0;
+  padding-top: var(--space-sm);
+}
+
+.divided-row__detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.divided-row__full-task {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ── Launch Step 3 – Provision Toggle ── */
+.provision-toggle {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-sm);
+}
+
+.provision-toggle__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  list-style: none;
+  user-select: none;
+}
+
+.provision-toggle__summary::-webkit-details-marker {
+  display: none;
+}
+
+.provision-toggle__summary::marker {
+  content: '';
+}
+
+.provision-toggle__body {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-sm);
+}
+
+
 .clean-callout {
   background: rgba(92, 225, 230, 0.05);
   border: 1px solid rgba(92, 225, 230, 0.2);

@@ -493,114 +493,102 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
       {step === 3 && divided && (
         <form onSubmit={handleLaunch} id="step-divided-work" className="wizard-page">
           <section className="form-section">
-            <div className="section-title-row">
-              <h2 className="section-title">
-                <span className="section-icon mono">03</span>
-                Divided Work Plan
-              </h2>
-              <span className="security-tag mono" style={{ color: 'var(--accent)' }}>
-                ✓ Zero Merge Conflicts Guaranteed
-              </span>
-            </div>
-
-            {/* Architecture Overview Pill */}
-            <div className="clean-callout">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="mono" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.875rem' }}>
-                  📦 {projectName}
-                </span>
-                <span className="mono muted" style={{ fontSize: '0.75rem' }}>
-                  {techStack}
+            {/* ── Compact Header ── */}
+            <div className="launch-header">
+              <div className="launch-header__title-row">
+                <h2 className="section-title" style={{ border: 'none', padding: 0, margin: 0 }}>
+                  <span className="section-icon mono">03</span>
+                  {projectName}
+                </h2>
+                <span className="security-tag mono" style={{ color: 'var(--accent)' }}>
+                  ✓ Zero Merge Conflicts
                 </span>
               </div>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-                {summary}
-              </p>
+              <div className="launch-header__meta mono">
+                <span className="muted">{techStack}</span>
+                <span className="muted">·</span>
+                <span className="muted">{allocatedTeammates.length} teammates</span>
+                <span className="muted">·</span>
+                <span className="muted">{existingRepoUrl ? existingRepoUrl.replace(/^https?:\/\/github\.com\//, '') : 'demo mode'}</span>
+              </div>
             </div>
 
-            {/* Clean Teammate Allocation Cards */}
-            <div className="divided-work-list">
-              {allocatedTeammates.map((mate, i) => (
-                <div key={i} className="divided-card">
-                  <div className="divided-card-head">
-                    <span className="divided-name">{mate.name}</span>
-                    <span className="mono muted" style={{ fontSize: '0.75rem' }}>
-                      ↳ Branch: <code>{`${mate.task_description.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 18)}-${mate.github_username}`}</code>
-                    </span>
-                  </div>
+            {/* ── Compact Teammate Rows ── */}
+            <div className="divided-work-list-compact">
+              {allocatedTeammates.map((mate, i) => {
+                const taskOneLine = mate.task_description.replace(/###?\s*\w+\s*/g, '').replace(/[#*_`]/g, '').replace(/\s+/g, ' ').trim()
+                const truncated = taskOneLine.length > 120 ? taskOneLine.slice(0, 120) + '…' : taskOneLine
+                const branchSlug = `${mate.task_description.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 18)}-${mate.github_username}`
 
-                  <div className="divided-task-text">
-                    <strong>Assigned:</strong> {mate.task_description}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className="field-label mono" style={{ fontSize: '0.6875rem' }}>Isolated Paths:</span>
-                    <div className="ai-tm-paths mono">
-                      {mate.owned_paths.map((p, idx) => (
-                        <span key={idx} className="path-tag">
-                          {p}
-                        </span>
-                      ))}
+                return (
+                  <details key={i} className="divided-row" id={`divided-row-${i}`}>
+                    <summary className="divided-row__summary">
+                      <div className="divided-row__left">
+                        <span className="divided-row__name">{mate.name}</span>
+                        <span className="divided-row__task muted">{truncated}</span>
+                      </div>
+                      <div className="divided-row__badges">
+                        <span className="path-count-badge mono">{mate.owned_paths.length} paths</span>
+                        <span className="branch-badge mono">{branchSlug}</span>
+                      </div>
+                    </summary>
+                    <div className="divided-row__detail">
+                      <div className="divided-row__detail-section">
+                        <span className="detail-label">Full task</span>
+                        <p className="divided-row__full-task">{mate.task_description}</p>
+                      </div>
+                      <div className="divided-row__detail-section">
+                        <span className="detail-label">Owned paths</span>
+                        <div className="ai-tm-paths mono">
+                          {mate.owned_paths.map((p, idx) => (
+                            <span key={idx} className="path-tag">{p}</span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  </details>
+                )
+              })}
             </div>
 
-            {/* Launch / GitHub Cloud Provisioning */}
-            <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border-subtle)' }}>
-              <div className="clean-callout" style={{ marginBottom: 'var(--space-md)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                  <div>
-                    <span className="mono" style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.875rem' }}>
-                      🔗 Target Repository: {existingRepoUrl ? existingRepoUrl : 'Simulated GitHub Workspace'}
-                    </span>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                      <strong>Lifecycle:</strong> Each teammate creates &amp; works on their dedicated branch, then opens a PR to merge into <code>main</code>.
-                    </p>
+            {/* ── Slim GitHub Provisioning ── */}
+            <details className="provision-toggle" open={!existingRepoUrl}>
+              <summary className="provision-toggle__summary mono">
+                <span>⚙ GitHub provisioning</span>
+                <span className="muted" style={{ fontSize: '0.7rem' }}>{existingRepoUrl ? 'repo linked' : 'configure'}</span>
+              </summary>
+              <div className="provision-toggle__body">
+                {!existingRepoUrl && (
+                  <div className="field">
+                    <label htmlFor="existing-repo-url" className="field-label">Repository URL</label>
+                    <input
+                      id="existing-repo-url"
+                      type="text"
+                      className="input mono"
+                      placeholder="https://github.com/you/repo"
+                      value={existingRepoUrl}
+                      onChange={(e) => setExistingRepoUrl(e.target.value)}
+                    />
                   </div>
-                  <span className="security-tag mono">
-                    Target Branch: main
-                  </span>
-                </div>
-              </div>
-
-              {/* If repo wasn't entered in Step 1, allow entering it here */}
-              {!existingRepoUrl && (
-                <div className="field" style={{ marginBottom: 'var(--space-sm)' }}>
-                  <label htmlFor="existing-repo-url" className="field-label">
-                    GitHub Repository URL
-                  </label>
+                )}
+                <div className="field">
+                  <label htmlFor="github-pat" className="field-label">GitHub token (optional)</label>
                   <input
-                    id="existing-repo-url"
-                    type="text"
+                    id="github-pat"
+                    type="password"
+                    autoComplete="off"
                     className="input mono"
-                    placeholder="https://github.com/your-username/your-hackathon-repo"
-                    value={existingRepoUrl}
-                    onChange={(e) => setExistingRepoUrl(e.target.value)}
+                    placeholder="Fine-grained PAT — never saved"
+                    value={githubPat}
+                    onChange={(e) => setGithubPat(e.target.value)}
                   />
                 </div>
-              )}
-              <div className="field" style={{ marginBottom: 'var(--space-sm)' }}>
-                <label htmlFor="github-pat" className="field-label">GitHub fine-grained token (optional)</label>
-                <input
-                  id="github-pat"
-                  type="password"
-                  autoComplete="off"
-                  className="input mono"
-                  placeholder="Required to create branches in a real repository"
-                  value={githubPat}
-                  onChange={(e) => setGithubPat(e.target.value)}
-                />
-                <span className="muted" style={{ fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                  Used only for this request and never saved. Leave blank to use demo mode.
-                </span>
+                <label className="field-label" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                  <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
+                  Demo mode (skip real repo changes)
+                </label>
               </div>
-              <label className="field-label" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input type="checkbox" checked={demoMode} onChange={(e) => setDemoMode(e.target.checked)} />
-                Force demo mode (no repository changes)
-              </label>
-            </div>
+            </details>
 
             {submitError && (
               <div className="error-banner" style={{ marginTop: 'var(--space-sm)' }}>
@@ -634,7 +622,7 @@ export default function ProjectForm({ onSuccess }: ProjectFormProps) {
                 disabled={submitting}
                 id="submit-btn"
               >
-                {submitting ? 'Launching Team...' : '🚀 Launch Team & Cut Branches'}
+                {submitting ? 'Launching…' : '🚀 Launch & Cut Branches'}
               </RadialRevealButton>
             </div>
           </section>
