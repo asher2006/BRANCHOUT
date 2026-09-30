@@ -201,7 +201,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
           </div>
 
           <div className="git-cmd-box">
-            <span className="field-label">Step 1: Clone repo &amp; checkout your branch:</span>
+            <span className="field-label">Step 1: Clone repo & checkout your branch:</span>
             <div className="copy-cmd-row" style={{ marginTop: '4px' }}>
               <code className="cmd-box mono">{gitCloneCmd}</code>
               <button
@@ -215,7 +215,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
           </div>
 
           <div className="git-cmd-box" style={{ marginTop: 'var(--space-sm)' }}>
-            <span className="field-label">Step 2: Work on your files &amp; push to your branch:</span>
+            <span className="field-label">Step 2: Work on your files & push to your branch:</span>
             <div className="copy-cmd-row" style={{ marginTop: '4px' }}>
               <code className="cmd-box mono">{gitPushCmd}</code>
               <button
@@ -230,7 +230,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
 
           <div className="git-cmd-box" style={{ marginTop: 'var(--space-sm)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <span className="field-label">Step 3: Push &amp; Merge into main branch:</span>
+              <span className="field-label">Step 3: Push & Merge into main branch:</span>
               {repoUrl !== '#' && (
                 <a
                   href={`${repoUrl.replace(/\.git$/, '')}/compare/main...${teammate.branch_name}?expand=1`}
@@ -289,7 +289,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
         <div className="prompt-section-header">
           <div>
             <h2 className="section-title" style={{ border: 'none', paddingBottom: '2px' }}>
-              <span className="section-icon mono">>_</span>
+              <span className="section-icon mono">&gt;_</span>
               Your Ready-to-Paste Master Prompt
             </h2>
             <p className="section-description">

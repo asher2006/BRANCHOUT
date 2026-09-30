@@ -56,7 +56,6 @@ export default function ContributionDashboard({
 
   const fetchActivity = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true)
-    setError(null)
 
     try {
       const res = await fetch(`/api/projects/${projectId}/activity/refresh`, {
@@ -69,6 +68,7 @@ export default function ContributionDashboard({
       }
       const data: ProjectActivityReport = await res.json()
       setReport(data)
+      setError(null)
     } catch (err: any) {
       setError(err.message || 'Error fetching activity')
     } finally {
@@ -79,8 +79,33 @@ export default function ContributionDashboard({
 
   // Initial load & threshold changes
   useEffect(() => {
-    fetchActivity()
-  }, [fetchActivity])
+    let ignore = false
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/activity/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ threshold: staleThreshold, pat: userPat || undefined }),
+        })
+        if (!res.ok) throw new Error('Failed to load project activity')
+        const data: ProjectActivityReport = await res.json()
+        if (!ignore) {
+          setReport(data)
+          setError(null)
+          setLoading(false)
+        }
+      } catch (err: any) {
+        if (!ignore) {
+          setError(err.message || 'Error fetching activity')
+          setLoading(false)
+        }
+      }
+    }
+    load()
+    return () => {
+      ignore = true
+    }
+  }, [projectId, staleThreshold, userPat])
 
   // Auto-refresh interval
   useEffect(() => {
@@ -220,7 +245,7 @@ export default function ContributionDashboard({
         <p>{error}</p>
         {onBackToProjects && (
           <button className="btn btn-small" onClick={onBackToProjects} style={{ marginTop: '8px' }}>
-            &larr; Back
+            ← Back
           </button>
         )}
       </div>
@@ -286,7 +311,7 @@ export default function ContributionDashboard({
         <div className="dashboard-title-group">
           {onBackToProjects && (
             <button className="btn btn-icon btn-back" onClick={onBackToProjects} title="Back">
-              &larr;
+              ←
             </button>
           )}
           <div>
@@ -315,7 +340,7 @@ export default function ContributionDashboard({
               rel="noopener noreferrer"
               className="btn btn-small"
             >
-              GitHub Repo &nearr;
+              GitHub Repo ↗
             </a>
           )}
           <button
@@ -473,7 +498,7 @@ export default function ContributionDashboard({
             className="btn btn-small btn-secondary"
             onClick={() => setShowWebhookModal(true)}
           >
-            Ping on Discord / Slack &rarr;
+            Ping on Discord / Slack →
           </button>
         </div>
       )}
@@ -553,7 +578,7 @@ export default function ContributionDashboard({
                     <span className="dash-card__metric-label">PR</span>
                     <span className={`pr-badge ${pr.cls} mono`}>
                       {branch.prStatus === 'open' && branch.prUrl ? (
-                        <a href={branch.prUrl} target="_blank" rel="noopener noreferrer">{pr.label} &nearr;</a>
+                        <a href={branch.prUrl} target="_blank" rel="noopener noreferrer">{pr.label} ↗</a>
                       ) : pr.label}
                     </span>
                   </div>
@@ -573,7 +598,7 @@ export default function ContributionDashboard({
                     rel="noopener noreferrer"
                     className="mono dash-card__branch-link"
                   >
-                    {branch.branchName} &nearr;
+                    {branch.branchName} ↗
                   </a>
                   <span className={`boundary-badge ${boundary.cls} mono`}>{boundary.label}</span>
                 </div>
@@ -668,7 +693,7 @@ export default function ContributionDashboard({
                 className="btn-icon"
                 onClick={() => setShowWebhookModal(false)}
               >
-                &times;
+                ×
               </button>
             </div>
 
