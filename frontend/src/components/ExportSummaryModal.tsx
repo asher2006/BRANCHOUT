@@ -57,7 +57,7 @@ export default function ExportSummaryModal({ projectId, report, onClose }: Expor
       <div className="modal-card export-modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h3>📦 End-of-Hackathon Contribution Export</h3>
+            <h3>End-of-Hackathon Contribution Export</h3>
             <p className="section-description" style={{ marginTop: '2px' }}>
               Download or copy summary reports for judging submissions, Devpost writeups, and team retrospectives.
             </p>
@@ -75,7 +75,7 @@ export default function ExportSummaryModal({ projectId, report, onClose }: Expor
             onClick={() => setActiveTab('markdown')}
             id="tab-markdown-btn"
           >
-            📄 Markdown (.md)
+            Markdown (.md)
           </button>
           <button
             type="button"
@@ -83,7 +83,7 @@ export default function ExportSummaryModal({ projectId, report, onClose }: Expor
             onClick={() => setActiveTab('csv')}
             id="tab-csv-btn"
           >
-            📊 CSV Spreadsheet (.csv)
+            CSV Spreadsheet (.csv)
           </button>
         </div>
 
@@ -123,7 +123,7 @@ export default function ExportSummaryModal({ projectId, report, onClose }: Expor
                 onClick={() => handleCopy(markdownContent, 'md')}
                 id="copy-markdown-btn"
               >
-                {copiedText === 'md' ? '✓ Copied Markdown!' : '📋 Copy Markdown'}
+                {copiedText === 'md' ? '✓ Copied Markdown!' : 'Copy Markdown'}
               </button>
               <button
                 type="button"
@@ -144,7 +144,7 @@ export default function ExportSummaryModal({ projectId, report, onClose }: Expor
                 onClick={() => handleCopy(csvContent, 'csv')}
                 id="copy-csv-btn"
               >
-                {copiedText === 'csv' ? '✓ Copied CSV!' : '📋 Copy CSV'}
+                {copiedText === 'csv' ? '✓ Copied CSV!' : 'Copy CSV'}
               </button>
               <button
                 type="button"

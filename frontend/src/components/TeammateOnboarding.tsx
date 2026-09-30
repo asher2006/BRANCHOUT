@@ -260,7 +260,7 @@ export default function TeammateOnboarding({ teammateId, onBack }: TeammateOnboa
       {/* ---- Assigned Task & Owned Paths ---- */}
       <section className="form-section onboarding-card" id="task-paths-card">
         <h2 className="section-title">
-          <span className="section-icon mono">🎯</span>
+          <span className="section-icon mono">::</span>
           Your Scope & Owned Paths
         </h2>
         <div className="scope-details">
